@@ -1,0 +1,20 @@
+# Slide 55 — the local context file never enters git
+CLAUDE.local.md
+
+# secrets
+.env
+.env.*
+
+# lesson material and scratch extractions
+pptx.txt
+*.pptx
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# node
+node_modules/
+dist/
