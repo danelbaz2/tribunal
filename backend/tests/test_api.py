@@ -29,6 +29,14 @@ VERDICTS = ("justified", "justified", "not_justified")
 
 @pytest.fixture
 async def api():
+    """A clean database, and an engine that never outlives its event loop.
+
+    The engine is module-level and every test gets its own loop, so a pooled
+    aiosqlite connection opened in one test and reused in the next fails with
+    "Event loop is closed". Disposing at both ends keeps each test's
+    connections inside the loop that made them.
+    """
+    await engine.dispose()
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
     await create_tables()
@@ -36,6 +44,14 @@ async def api():
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+    # A run is a background task. Let it reach its end before the loop closes
+    # under it -- reaching into `_tasks` because that is exactly what the
+    # module keeps them for.
+    pending = [task for task in runner._tasks if not task.done()]
+    if pending:
+        await asyncio.wait(pending, timeout=5)
+    await engine.dispose()
 
 
 @pytest.fixture
@@ -106,6 +122,47 @@ async def test_a_charge_is_stored_and_its_extraction_reported(api, reference_cha
     assert set(body) == {"caseId", "title", "wordCount", "pages", "hasTextLayer"}
     assert body["wordCount"] > 100
     assert body["hasTextLayer"] is True
+
+
+async def test_a_charge_arriving_as_a_file_is_stored(api, reference_charge):
+    """The upload path, which the paste path does not exercise: one URL takes
+    both, dispatched on content type, and a regression in either is invisible
+    to the other."""
+    response = await api.post(
+        "/api/cases",
+        files={"file": ("case.md", reference_charge.encode("utf-8"), "text/markdown")},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["wordCount"] > 100
+    assert body["hasTextLayer"] is True
+
+
+async def test_an_uploaded_scan_is_refused_at_upload(api):
+    """Pitfall 13, through the endpoint: a valid PDF with no text layer."""
+    import io as _io
+
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=595, height=842)
+    buffer = _io.BytesIO()
+    writer.write(buffer)
+
+    response = await api.post(
+        "/api/cases",
+        files={"file": ("scan.pdf", buffer.getvalue(), "application/pdf")},
+    )
+
+    assert response.status_code == 422
+    assert "No extractable text" in response.json()["detail"]
+
+
+async def test_a_multipart_post_with_no_file_says_so(api):
+    response = await api.post("/api/cases", files={"notafile": ("x.txt", b"hello")})
+
+    assert response.status_code == 422
 
 
 async def test_a_charge_that_accuses_nobody_is_refused_at_upload(api):

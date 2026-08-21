@@ -14,8 +14,13 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Starlette's, deliberately: `request.form()` yields that class, and FastAPI's
+# `UploadFile` is a *subclass* of it -- so testing against the FastAPI one is
+# always false and every upload looks like a missing file.
+from starlette.datastructures import UploadFile
 
 from .. import charge_file
 from ..database import get_session
