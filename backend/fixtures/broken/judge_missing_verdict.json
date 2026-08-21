@@ -1,0 +1,26 @@
+{
+  "slot": "judge_2",
+  "model": "qwen/qwen-2.5-72b-instruct:free",
+  "prompt": "<the captured prompt for this slot>",
+  "response": {
+    "id": "gen-fixture",
+    "model": "qwen/qwen-2.5-72b-instruct:free",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"confidence\": 0.72,\n  \"reasons\": [\n    \"The authorisation the procedure requires was unobtainable for the duration of the event, and the log records four attempts to obtain it.\",\n    \"The flood-response annex expressly contemplates acting without authorisation where property is at immediate risk.\"\n  ]\n}"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 2140,
+      "completion_tokens": 180,
+      "total_tokens": 2320,
+      "cost": 0.0
+    }
+  },
+  "duration_ms": 18300
+}

@@ -1,0 +1,26 @@
+{
+  "slot": "judge_3",
+  "model": "microsoft/phi-4-reasoning:free",
+  "prompt": "<the captured prompt for this slot>",
+  "response": {
+    "id": "gen-fixture",
+    "model": "microsoft/phi-4-reasoning:free",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"verdict\": \"not_justified\",\n  \"confidence\": 0.66,\n  \"reasons\": [\n    \"The annex does not define immediate risk, and no flooding was occurring on the eastern terrace at the time of the diversion.\"\n  ]\n}"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 2140,
+      "completion_tokens": 180,
+      "total_tokens": 2320,
+      "cost": 0.0
+    }
+  },
+  "duration_ms": 18300
+}

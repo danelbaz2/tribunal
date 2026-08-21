@@ -4,6 +4,8 @@ CLAUDE.local.md
 # secrets
 .env
 .env.*
+# ...but the template that says which two they are is committed
+!.env.example
 
 # lesson material and scratch extractions
 pptx.txt
@@ -18,3 +20,6 @@ __pycache__/
 # node
 node_modules/
 dist/
+
+# sqlite used by the offline tests and smoke runs
+*.sqlite

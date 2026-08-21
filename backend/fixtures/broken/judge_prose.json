@@ -1,0 +1,26 @@
+{
+  "slot": "judge_1",
+  "model": "meta-llama/llama-3.3-70b-instruct:free",
+  "prompt": "<the captured prompt for this slot>",
+  "response": {
+    "id": "gen-fixture",
+    "model": "meta-llama/llama-3.3-70b-instruct:free",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "Having weighed both sides carefully, I find the act was justified. The engineer faced an unreachable controller and a terrace that had flooded eight days earlier, and he restored the pump himself. My confidence is fairly high, around three quarters. My reasons are the unreachable authorisation, the prior flooding of the same terrace, and his own record of the event."
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 2140,
+      "completion_tokens": 180,
+      "total_tokens": 2320,
+      "cost": 0.0
+    }
+  },
+  "duration_ms": 18300
+}

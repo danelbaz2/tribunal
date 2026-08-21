@@ -1,0 +1,26 @@
+{
+  "slot": "judge_1",
+  "model": "google/gemma-2-27b-it:free",
+  "prompt": "<the captured prompt for this slot>",
+  "response": {
+    "id": "gen-fixture",
+    "model": "google/gemma-2-27b-it:free",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"verdict\": \"justified\",\n  \"confidence\": 87,\n  \"reasons\": [\n    \"The controller's line was engaged throughout the eleven minutes.\",\n    \"The engineer restored the outfall without instruction and recorded the diversion himself.\"\n  ]\n}"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 2140,
+      "completion_tokens": 180,
+      "total_tokens": 2320,
+      "cost": 0.0
+    }
+  },
+  "duration_ms": 18300
+}
