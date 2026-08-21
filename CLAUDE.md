@@ -28,10 +28,21 @@ No Docker. Two secrets in `.env`: OpenRouter key, database URL.
 
 ## Commands
 
-None are verified yet — no code exists. Candidates awaiting confirmation live in
-`CLAUDE.local.md`, which is not committed; they move into this file once they have actually been
-run. An unverified command in a committed file is worse than no command, because the agent
-trusts it.
+Verified — these have actually been run in this repository:
+
+```
+frontend dev     cd frontend && npm run dev          (fixtures: VITE_USE_FIXTURES=true npm run dev)
+frontend build   cd frontend && npm run build        (tsc -b, then vite build)
+frontend types   cd frontend && npm run typecheck
+```
+
+The frontend proxies `/api` to `http://127.0.0.1:8000` (`frontend/vite.config.ts`), so no base URL
+is configured per machine. Override with `VITE_API_TARGET`.
+
+The backend and test commands are still unverified — no backend code exists. Candidates awaiting
+confirmation live in `CLAUDE.local.md`, which is not committed; they move into this file once they
+have actually been run. An unverified command in a committed file is worse than no command,
+because the agent trusts it.
 
 Tests must run with **no network and no API key**. If a test needs either, it is written wrong —
 see the fixtures rule below.
