@@ -13,8 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import runner
-from ..config import get_settings
+from .. import pool, runner
 from ..database import get_session
 from ..models import Case, LlmCall, Run
 from ..schemas import ConveneRequest, RunOut
@@ -39,12 +38,18 @@ async def convene(
     if case is None:
         raise HTTPException(status_code=404, detail="No such case.")
 
-    settings = get_settings()
+    try:
+        # The pool resolved at startup, recorded on the run below: a seed alone
+        # cannot reconstitute a bench drawn from a tier that has since moved.
+        models = pool.get_pool()
+    except pool.PoolTooSmall as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
     seed = new_seed()
     try:
-        roster = draw_roster(seed, settings.model_pool, request.situation)
+        roster = draw_roster(seed, models, request.situation)
     except ValueError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
     run = Run(
         case_id=case.id,
@@ -52,7 +57,7 @@ async def convene(
         status="running",
         seed=seed,
         roster=roster,
-        pool=list(settings.model_pool),
+        pool=list(models),
     )
     session.add(run)
     await session.flush()

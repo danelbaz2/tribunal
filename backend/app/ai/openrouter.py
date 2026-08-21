@@ -190,26 +190,98 @@ class OpenRouterClient:
 
     # ── the pool ──────────────────────────────────────────────────────────
 
-    async def available_models(self) -> set[str]:
+    async def catalogue(self) -> list[dict[str, Any]]:
+        """Everything OpenRouter currently offers. The endpoint needs no key."""
         response = await self._http.get("/models")
         response.raise_for_status()
-        return {entry["id"] for entry in response.json().get("data", [])}
+        return list(response.json().get("data", []))
+
+    async def available_models(self) -> set[str]:
+        return {entry["id"] for entry in await self.catalogue()}
+
+    async def discover_free_pool(self, min_context_length: int) -> tuple[str, ...]:
+        """The free models that exist *today*.
+
+        The free tier changes without notice, so a hand-written list decays
+        into a server that refuses to start. Asking OpenRouter what is there
+        keeps the pool honest -- at the cost that the pool is no longer the
+        same set from one week to the next, which is why every run records the
+        pool it drew from.
+        """
+        return select_free_models(await self.catalogue(), min_context_length)
 
     async def validate_pool(self, pool: tuple[str, ...] | list[str]) -> None:
         """Fail at startup, not mid-trial.
 
-        OpenRouter's free tier changes without notice. A model that has
-        vanished should stop the server with a clear message rather than
-        surface as a failed run three minutes into a deliberation.
+        Used when a pool has been pinned by hand. A model that has vanished
+        should stop the server with a clear message rather than surface as a
+        failed run three minutes into a deliberation.
         """
         available = await self.available_models()
         missing = sorted(set(pool) - available)
         if missing:
             raise OpenRouterError(
-                "These pool models are not available on OpenRouter any more: "
+                "These pinned pool models are not available on OpenRouter any more: "
                 + ", ".join(missing)
-                + ". Correct the pool in app/config.py before running a trial."
+                + ". Correct MODEL_POOL, or unset it to draw from the live free tier."
             )
+
+
+def select_free_models(
+    catalogue: list[dict[str, Any]], min_context_length: int
+) -> tuple[str, ...]:
+    """Which of OpenRouter's models may sit on this bench.
+
+    Pure, so it is tested against a captured catalogue rather than the live
+    tier. Four conditions, each of them mechanical -- no model is ever named
+    here, because a hand-picked list is a hand-picked result.
+
+    1. **Costs nothing.** Prompt, completion and per-request price are all
+       zero. This is what makes "cost is zero on both sides" a measured fact
+       rather than an assumption about a tier.
+    2. **Carries the `:free` suffix.** Redundant against (1) for most models,
+       but it is the line that excludes `openrouter/free` -- a router alias
+       that resolves to a different model on every call. Seating that in all
+       seven chairs would look like Situation A and be nothing of the kind.
+       It also drops the zero-priced models that are not chat models at all
+       (a music model, an anonymous stealth endpoint).
+    3. **Takes text and returns text.** An image-only or audio model cannot
+       argue a case.
+    4. **Holds a transcript.** A judge is sent the charge file plus four
+       statements; a small context window fails stage 2 every time.
+
+    Returned sorted, so the pool is a stable ordered set and the seed draws
+    the same bench from the same tier.
+    """
+    chosen = []
+    for entry in catalogue:
+        identifier = entry.get("id")
+        if not isinstance(identifier, str) or not identifier.endswith(":free"):
+            continue
+
+        pricing = entry.get("pricing") or {}
+        if not all(_is_zero(pricing.get(key, "0")) for key in ("prompt", "completion", "request")):
+            continue
+
+        architecture = entry.get("architecture") or {}
+        if "text" not in (architecture.get("input_modalities") or []):
+            continue
+        if "text" not in (architecture.get("output_modalities") or []):
+            continue
+
+        if (entry.get("context_length") or 0) < min_context_length:
+            continue
+
+        chosen.append(identifier)
+
+    return tuple(sorted(set(chosen)))
+
+
+def _is_zero(value: object) -> bool:
+    try:
+        return float(value) == 0.0  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
 
 
 def _content_of(payload: dict[str, Any]) -> str:

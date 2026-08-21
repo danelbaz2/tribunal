@@ -74,11 +74,10 @@ def replay(monkeypatch):
 
 
 def _caller(overrides: dict[str, object] | None) -> ScriptedCaller:
-    from app.config import get_settings
-    from app.tribunal.roster import draw_roster
+    from app import pool as pool_module
 
     # Every model in the pool gets an answer, whichever way the draw fell.
-    pool = get_settings().model_pool
+    pool = pool_module.get_pool()
     answers: dict[str, object] = {}
     for model in pool:
         answers[model] = "A statement of about three hundred words would go here."
@@ -91,7 +90,6 @@ def _caller(overrides: dict[str, object] | None) -> ScriptedCaller:
             ruling_json(VERDICTS[index % 3], 0.7),
         ]
 
-    del draw_roster
     if overrides:
         answers.update(overrides)
     return ScriptedCaller(answers)
@@ -255,11 +253,16 @@ async def test_a_failed_call_fails_the_run_and_names_the_slot(
     api, reference_charge, replay, monkeypatch
 ):
     """Criterion 7, and pitfall 4: which slot failed on which model is
-    surfaced, so a re-run is one click."""
-    from app.config import get_settings
+    surfaced, so a re-run is one click.
 
-    broken_model = get_settings().model_pool[0]
-    replay({broken_model: TimeoutError("the model never answered")})
+    Every model in the pool is broken rather than one, because the draw takes
+    seven of however many the tier is offering -- singling out one model would
+    pass or fail depending on whether it happened to be seated.
+    """
+    from app import pool as pool_module
+
+    models = pool_module.get_pool()
+    replay({model: TimeoutError("the model never answered") for model in models})
 
     case = await create_case(api, reference_charge)
     started = (
@@ -268,10 +271,15 @@ async def test_a_failed_call_fails_the_run_and_names_the_slot(
     finished = await wait_for(api, started["id"])
 
     assert finished["status"] == "failed"
+
     failed = [call for call in finished["calls"] if call["status"] == "failed"]
-    assert failed, "the failing slot must be recorded, not swallowed"
-    assert all(call["error"] for call in failed)
-    assert any(call["model"] == broken_model for call in failed)
+    assert failed, "the failing slots must be recorded, not swallowed"
+    for call in failed:
+        assert call["error"], f"{call['slot']} failed without saying why"
+        assert call["model"] in models, "the failing slot must name its model"
+
+    # Stage 1 never completed, so no judge was ever asked.
+    assert all(call["verdict"] is None for call in finished["calls"])
 
 
 async def test_an_unknown_run_is_a_404(api):

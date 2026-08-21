@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import pool
 from .api import cases, comparisons, runs
 from .config import get_settings
 from .database import create_tables
@@ -28,17 +29,32 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     await create_tables()
 
-    if settings.validate_pool_on_startup and settings.openrouter_api_key:
+    if settings.resolve_pool_on_startup and settings.openrouter_api_key:
         from .ai.openrouter import OpenRouterClient, OpenRouterError
 
         try:
             async with OpenRouterClient(settings) as client:
-                await client.validate_pool(settings.model_pool)
+                if settings.model_pool:
+                    # Pinned by hand: check it is still real, and use it as given.
+                    await client.validate_pool(settings.model_pool)
+                    models = tuple(settings.model_pool)
+                    source = "pinned by MODEL_POOL"
+                else:
+                    models = await client.discover_free_pool(settings.min_context_length)
+                    source = "discovered from the live free tier"
         except OpenRouterError as error:
             # Loud, and at startup. Not a warning to be scrolled past.
             raise RuntimeError(str(error)) from error
+
+        pool.set_pool(models)
+        log.warning(
+            "Model pool, %s: %d models\n    %s",
+            source,
+            len(models),
+            "\n    ".join(models),
+        )
     elif not settings.openrouter_api_key:
-        log.warning("No OPENROUTER_API_KEY set: the pool was not validated and no run can start.")
+        log.warning("No OPENROUTER_API_KEY set: no pool was resolved and no run can start.")
 
     yield
 
@@ -61,9 +77,17 @@ app.include_router(comparisons.router)
 
 @app.get("/api/health")
 async def health() -> dict[str, object]:
+    """Says what bench the next run would draw from, and where it came from."""
     settings = get_settings()
+    try:
+        models = pool.get_pool()
+    except pool.PoolTooSmall:
+        models = ()
+
     return {
         "status": "ok",
-        "pool_size": len(settings.model_pool),
         "has_api_key": bool(settings.openrouter_api_key),
+        "pool_source": "pinned" if settings.model_pool else "discovered",
+        "pool_size": len(models),
+        "pool": list(models),
     }

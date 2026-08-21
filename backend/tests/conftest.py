@@ -27,7 +27,7 @@ BROKEN = FIXTURES / "broken"
 _DB_FILE = Path(tempfile.gettempdir()) / "tribunal_tests.sqlite"
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_DB_FILE.as_posix()}"
 os.environ["OPENROUTER_API_KEY"] = ""
-os.environ["VALIDATE_POOL_ON_STARTUP"] = "false"
+os.environ["RESOLVE_POOL_ON_STARTUP"] = "false"
 
 
 # ── the control case ──────────────────────────────────────────────────────
@@ -144,6 +144,21 @@ def scripted() -> Callable[[dict[str, object]], ScriptedCaller]:
 
 #: Distinct per slot, so a scripted answer can be addressed to one chair.
 TEST_POOL: tuple[str, ...] = tuple(f"test/model-{index}:free" for index in range(1, 10))
+
+
+@pytest.fixture(autouse=True)
+def _seated_pool():
+    """Every test runs against a fixed stand-in pool.
+
+    The real one is discovered from OpenRouter at startup, which a test must
+    never do. Cleared afterwards so no test inherits another's bench.
+    """
+    from app import pool
+
+    pool.clear()
+    pool.set_pool(TEST_POOL)
+    yield
+    pool.clear()
 
 
 @pytest.fixture

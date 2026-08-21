@@ -76,8 +76,19 @@ response shapes skip with a message saying so. Everything else — the
 arithmetic, the independence assertions, every failure path — runs offline
 today against `fixtures/broken/`.
 
-**The model pool holds exactly seven entries** (`app/config.py`). Situation B
-therefore has no draw left to make: seven distinct models from a pool of seven
-is the same bench every time, and the seed only shuffles which chair each takes.
-Widening the pool is a decision about what the comparison measures, so it is
-not one to take quietly.
+**The model pool is discovered, not written down.** At startup the server asks
+OpenRouter what it is offering and keeps the models that cost nothing, carry the
+`:free` suffix, take and return text, and can hold a transcript
+(`ai/openrouter.py:select_free_models`). Seventeen qualified on 21 August 2026.
+`GET /api/health` reports the resolved pool.
+
+Set `MODEL_POOL` to pin it instead — to reproduce an old run, or to hold the
+bench still across a comparison. A pinned pool is validated at startup and fails
+loudly if a member has gone.
+
+The cost of a live pool, stated plainly: two runs convened a week apart may draw
+from different candidate sets, so comparing them carries a third uncontrolled
+variable on top of the draw itself. Every run records the pool it drew from
+(`runs.pool`), which is what keeps criterion 15 true — reconstitution needs the
+seed *and* the pool, and both are on the row. Compare runs from the same
+sitting.

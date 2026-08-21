@@ -12,22 +12,21 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# The pool of free OpenRouter model identifiers. It must hold at least 7
-# entries (SPECIFICATION.md Part 3).
+# The pool is not a constant any more.
 #
-# Both situations draw from this one pool: Situation A takes 1 model and seats
-# it seven times, Situation B takes 7 distinct models. Adding to the pool, or
-# admitting a paid model, changes what the comparison measures -- that is a
-# decision for a human, not a convenience for a failing run.
-DEFAULT_MODEL_POOL: tuple[str, ...] = (
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "google/gemma-2-27b-it:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "deepseek/deepseek-r1:free",
-    "nousresearch/hermes-3-llama-3.1-405b:free",
-    "microsoft/phi-4-reasoning:free",
-)
+# It was: seven free model identifiers written down by hand. Every one of them
+# had left OpenRouter's free tier by August 2026, and the startup check --
+# working exactly as intended -- refused to start the server. A written list
+# decays; the tier does not hold still (pitfall 7).
+#
+# So the pool is **discovered at startup** from what OpenRouter is offering
+# today, by the mechanical rules in `ai/openrouter.py:select_free_models`. No
+# model is named anywhere in this project, because a hand-picked bench is a
+# hand-picked result.
+#
+# `MODEL_POOL` pins it instead, as a deliberate act -- to reproduce an old run,
+# or to hold the bench still across a comparison. A pinned pool is validated
+# against OpenRouter at startup and fails loudly if a member has gone.
 
 
 class Settings(BaseSettings):
@@ -59,12 +58,17 @@ class Settings(BaseSettings):
     #: truncated -- the actual word count is recorded instead.
     statement_target_words: int = 300
 
-    model_pool: tuple[str, ...] = DEFAULT_MODEL_POOL
+    #: Empty means "discover from the live free tier". Set MODEL_POOL to pin it.
+    model_pool: tuple[str, ...] = ()
 
-    #: Validate the pool against OpenRouter at startup, so a model that has
-    #: disappeared from the free tier fails with a clear message rather than
-    #: mid-trial (pitfall 7). Off when there is no key, and in tests.
-    validate_pool_on_startup: bool = True
+    #: A judge is sent the charge file and all four statements. A model that
+    #: cannot hold that much fails stage 2 every time, so it is not seated.
+    min_context_length: int = 16384
+
+    #: Resolve the pool at startup, so a tier that has moved fails with a clear
+    #: message rather than mid-trial (pitfall 7). Off when there is no key, and
+    #: in tests.
+    resolve_pool_on_startup: bool = True
 
 
 @lru_cache

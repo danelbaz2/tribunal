@@ -68,12 +68,22 @@ def test_no_template_contains_a_word_from_the_reference_case(name, reference_cha
 
 @pytest.mark.parametrize("name", list(TEMPLATES))
 def test_no_template_names_a_model_or_a_vendor(name):
-    from app.config import DEFAULT_MODEL_POOL
+    """Read against a real captured catalogue rather than a written pool: the
+    pool is discovered at startup now, so there is no list to go stale."""
+    import json
+    from pathlib import Path
+
+    catalogue = json.loads(
+        (Path(__file__).parent / "data" / "openrouter_models.json").read_text(encoding="utf-8")
+    )["data"]
 
     body = TEMPLATES[name].lower()
-    for model in DEFAULT_MODEL_POOL:
-        assert model.lower() not in body
-        assert model.split("/")[0].lower() not in body
+    for entry in catalogue:
+        identifier = entry["id"]
+        if not isinstance(identifier, str):
+            continue
+        assert identifier.lower() not in body
+        assert identifier.split("/")[0].lower() not in body
 
 
 def test_the_two_advocate_prompts_differ_only_in_the_position(reference_charge):
