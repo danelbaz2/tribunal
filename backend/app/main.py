@@ -1,10 +1,10 @@
 """Starts the server.
 
-Two things happen before the first request: the tables are created if they are
-missing, and the model pool is checked against OpenRouter. The second is
-deliberate -- OpenRouter's free tier changes without notice, and a model that
-has vanished should stop the server with a clear message rather than surface
-three minutes into a deliberation as a failed run.
+Two things happen before the first request: the tables are created if they
+are missing, and the hand-picked `MODEL_POOL` is loaded into `pool`. There is
+no live check against OpenRouter -- a model that has left the free tier fails
+the run that draws it, and the failure names the slot and model, same as any
+other call failure.
 """
 
 from __future__ import annotations
@@ -13,13 +13,17 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 
 from . import pool
-from .api import cases, comparisons, runs
+from .api import cases, runs
 from .config import get_settings
-from .database import create_tables
+from .database import SessionFactory, create_tables
+from .models import LlmCall, Run
 
 log = logging.getLogger("tribunal")
 
@@ -28,35 +32,75 @@ log = logging.getLogger("tribunal")
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     await create_tables()
+    await abandon_interrupted_runs()
 
-    if settings.resolve_pool_on_startup and settings.openrouter_api_key:
-        from .ai.openrouter import OpenRouterClient, OpenRouterError
-
-        try:
-            async with OpenRouterClient(settings) as client:
-                if settings.model_pool:
-                    # Pinned by hand: check it is still real, and use it as given.
-                    await client.validate_pool(settings.model_pool)
-                    models = tuple(settings.model_pool)
-                    source = "pinned by MODEL_POOL"
-                else:
-                    models = await client.discover_free_pool(settings.min_context_length)
-                    source = "discovered from the live free tier"
-        except OpenRouterError as error:
-            # Loud, and at startup. Not a warning to be scrolled past.
-            raise RuntimeError(str(error)) from error
-
-        pool.set_pool(models)
+    if settings.model_pool:
+        pool.set_pool(settings.model_pool)
         log.warning(
-            "Model pool, %s: %d models\n    %s",
-            source,
-            len(models),
-            "\n    ".join(models),
+            "Model pool, pinned by MODEL_POOL: %d models\n    %s",
+            len(pool.get_pool()),
+            "\n    ".join(pool.get_pool()),
         )
-    elif not settings.openrouter_api_key:
-        log.warning("No OPENROUTER_API_KEY set: no pool was resolved and no run can start.")
+    else:
+        log.warning("No MODEL_POOL configured: no pool was resolved and no run can start.")
 
     yield
+
+
+async def abandon_interrupted_runs() -> None:
+    """Close out runs whose process is gone.
+
+    A run is driven by a background task in this process. Restart the server
+    mid-trial and that task dies, leaving the run `running` and its calls
+    `writing` for ever -- an interface waiting indefinitely for a stage nobody
+    is working on.
+
+    They cannot be resumed: the calls were in flight, and a statement half
+    written is not a statement. So they are marked `failed`, which is what they
+    are, and the row says why rather than leaving a mystery in the table.
+
+    Two states, treated differently, because they mean different things:
+
+    * `writing` is a claim that a model is answering right now. After a restart
+      that is false, so it is corrected.
+    * `waiting` is a claim that the slot never got the floor. That stays true,
+      and on a failed run it is worth keeping -- which slots never ran is part
+      of what happened.
+    """
+    async with SessionFactory() as session:
+        interrupted = (
+            await session.execute(select(Run).where(Run.status == "running"))
+        ).scalars().all()
+
+        for run in interrupted:
+            run.status = "failed"
+            run.finished_at = datetime.now(timezone.utc)
+
+        # Every stale `writing` row, on those runs and on any earlier run left
+        # mid-flight by a previous restart.
+        stale = (
+            await session.execute(
+                select(LlmCall).where(
+                    LlmCall.status == "writing",
+                    LlmCall.run_id.in_(select(Run.id).where(Run.status != "running")),
+                )
+            )
+        ).scalars().all()
+
+        for call in stale:
+            call.status = "failed"
+            call.error = (
+                "The server restarted while this call was in flight. "
+                "A run cannot be resumed; convene again."
+            )
+
+        if interrupted or stale:
+            await session.commit()
+            log.warning(
+                "Startup: %d interrupted run(s) marked failed, %d stale call(s) closed.",
+                len(interrupted),
+                len(stale),
+            )
 
 
 app = FastAPI(title="LLM Tribunal", lifespan=lifespan)
@@ -72,12 +116,11 @@ app.add_middleware(
 
 app.include_router(cases.router)
 app.include_router(runs.router)
-app.include_router(comparisons.router)
 
 
 @app.get("/api/health")
 async def health() -> dict[str, object]:
-    """Says what bench the next run would draw from, and where it came from."""
+    """Says what bench the next run would draw from."""
     settings = get_settings()
     try:
         models = pool.get_pool()
@@ -87,7 +130,6 @@ async def health() -> dict[str, object]:
     return {
         "status": "ok",
         "has_api_key": bool(settings.openrouter_api_key),
-        "pool_source": "pinned" if settings.model_pool else "discovered",
         "pool_size": len(models),
         "pool": list(models),
     }

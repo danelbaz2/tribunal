@@ -1,0 +1,86 @@
+{
+  "probed_at": "2026-08-21T17:07:19Z",
+  "reasoning_effort": "low",
+  "task_tokens_budget": 200,
+  "ranked": [
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "ok": true,
+      "seconds": 7.22,
+      "tokens": 925,
+      "thinking": 569,
+      "note": "",
+      "per_second": 128.12
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "ok": true,
+      "seconds": 2.98,
+      "tokens": 313,
+      "thinking": 116,
+      "note": "",
+      "per_second": 105.03
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "ok": true,
+      "seconds": 3.43,
+      "tokens": 181,
+      "thinking": 27,
+      "note": "",
+      "per_second": 52.77
+    },
+    {
+      "model": "nvidia/nemotron-nano-9b-v2:free",
+      "ok": true,
+      "seconds": 45.04,
+      "tokens": 1801,
+      "thinking": 1292,
+      "note": "",
+      "per_second": 39.99
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "ok": true,
+      "seconds": 37.63,
+      "tokens": 820,
+      "thinking": 424,
+      "note": "",
+      "per_second": 21.79
+    },
+    {
+      "model": "openai/gpt-oss-20b:free",
+      "ok": true,
+      "seconds": 10.52,
+      "tokens": 138,
+      "thinking": 10,
+      "note": "",
+      "per_second": 13.12
+    },
+    {
+      "model": "z-ai/glm-5.2:free",
+      "ok": true,
+      "seconds": 55.79,
+      "tokens": 361,
+      "thinking": 280,
+      "note": "",
+      "per_second": 6.47
+    },
+    {
+      "model": "google/gemma-4-31b-it:free",
+      "ok": false,
+      "seconds": 181.55,
+      "tokens": 0,
+      "thinking": 0,
+      "note": "rate limited, and 180s of waiting was not enough. Lower MAX_CONCURRENT_CALLS, or wait for "
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "ok": false,
+      "seconds": 181.5,
+      "tokens": 0,
+      "thinking": 0,
+      "note": "rate limited, and 180s of waiting was not enough. Lower MAX_CONCURRENT_CALLS, or wait for "
+    }
+  ]
+}

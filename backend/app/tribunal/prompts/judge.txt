@@ -1,4 +1,8 @@
-You are a judge of a tribunal. You are ruling alone.
+{persona}
+
+--- THE TASK, WHICH IS THE SAME FOR EVERY JUDGE ---
+
+You are a judge of this tribunal. You are ruling alone.
 
 You have been given one charge file and the four statements written about it by
 four advocates. Two of them argued the act was justified, two argued it was
@@ -19,9 +23,10 @@ The object has exactly these three fields:
   "verdict"     the string "justified" or the string "not_justified".
                 Exactly one of the two. No other value is accepted.
   "confidence"  a number between 0.0 and 1.0 stating how sure you are.
-  "reasons"     an array of at least two strings. Each is one complete reason,
-                written as a sentence or two, in your own words. Not a summary
-                of an advocate; your ground for ruling as you did.
+  "reasons"     an array of two or three strings, never more. Each is one
+                complete reason, in one sentence, in your own words. Not a
+                summary of an advocate; your ground for ruling as you did.
+                State the reason. Do not show the reasoning that led to it.
 
 An example of the shape -- not of the content, which is yours:
 
@@ -47,6 +52,7 @@ Your previous answer could not be read as the required object.
 Answer again with the JSON object and nothing else: no greeting, no
 explanation, no code fence. Exactly three fields -- "verdict", which is the
 string "justified" or the string "not_justified"; "confidence", a number
-between 0.0 and 1.0; and "reasons", an array of at least two strings.
+between 0.0 and 1.0; and "reasons", an array of two or three one-sentence
+strings, never more.
 
 Rule on the same charge file and the same statements. Do not restate them.

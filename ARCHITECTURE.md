@@ -1,5 +1,13 @@
 # LLM Tribunal — Architecture
 
+> **Superseded, 2026-08-21.** The Situation A/B comparison feature described throughout this
+> document — the `comparisons` table, `Comparison.tsx`, the situation toggle, live pool discovery
+> — was removed from the project on Dan's instruction. Checking one roster against another is
+> done by hand now, outside the app; it is not a feature the code implements. `SPECIFICATION.md`
+> and `CLAUDE.md` reflect the current shape. What still applies from this document: the 7-slot
+> structure, the two-stage boundary, judge anonymity, and the reasons for storing rows instead of
+> totals. Read the comparison-specific sections below as history, not as current design.
+
 ---
 
 # Part 1 — The Problem

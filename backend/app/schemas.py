@@ -36,7 +36,7 @@ class ExtractedCharge(Wire):
 
 
 class ConveneRequest(BaseModel):
-    """The only two inputs in the whole flow."""
+    """The only two inputs the whole flow takes: which case, and which bench."""
 
     case_id: int = Field(alias="case_id")
     situation: str
@@ -55,7 +55,17 @@ class CallOut(Wire):
     reasons: list[str] | None = None
     words: int
     duration_ms: int
+    #: Recorded because criterion 8 requires it, and reported nowhere: the
+    #: free tier prices at zero, so a cost widget would always read $0.00.
     cost: float
+    #: What the model generated, and how much of it was thinking nobody reads.
+    #: Derived from the stored raw response -- no column, because it is not
+    #: counted or filtered on. This is what replaced cost on screen: it varies
+    #: per model, and it is the largest single explanation of duration.
+    tokens: int | None = None
+    thinking_tokens: int | None = None
+    #: 2 when a judge had to be asked twice for the required form.
+    attempts: int = 0
     #: Which slot failed, and why. Surfaced, never swallowed.
     error: str | None = None
 
@@ -66,45 +76,7 @@ class RunOut(Wire):
     case_title: str
     status: str
     situation: str
-    seed: str
     roster: dict[str, str]
     started_at: datetime
     finished_at: datetime | None = None
     calls: list[CallOut]
-
-
-# ── comparisons ──────────────────────────────────────────────────────────
-
-
-class SlotAgreement(Wire):
-    """Did the same slot rule the same way in both situations?"""
-
-    slot: str
-    identical_verdict: str
-    different_verdict: str
-    agreed: bool
-    identical_model: str
-    different_model: str
-
-
-class SituationSummary(Wire):
-    run_id: int
-    justified_count: int
-    not_justified_count: int
-    wall_clock_ms: int
-    words_argued: int
-    cost: float
-    #: Per slot, so a duration difference is attributable.
-    duration_by_slot: dict[str, int]
-    #: Per statement, so a verbosity difference between situations is visible.
-    words_by_slot: dict[str, int]
-
-
-class ComparisonOut(Wire):
-    id: int
-    case_id: int
-    case_title: str
-    identical: SituationSummary
-    different: SituationSummary
-    #: The finding: agreement per judge slot.
-    agreement: list[SlotAgreement]

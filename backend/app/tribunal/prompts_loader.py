@@ -30,6 +30,21 @@ def _read(name: str) -> str:
     return (PROMPTS_DIR / name).read_text(encoding="utf-8")
 
 
+@lru_cache
+def persona_brief(slot: str) -> str:
+    """The voice one slot argues or rules in.
+
+    Seven files, one per chair. They carry manner and method only: what to
+    press, what to concede, how to read a rule. The task, the output contract,
+    the target length and the charge file itself live in the shared template,
+    so what can make a call *fail* is identical for all seven.
+
+    Personas are fixed for every run, a constant of the experiment rather than
+    a variable in it.
+    """
+    return (PROMPTS_DIR / "personas" / f"{slot}.txt").read_text(encoding="utf-8").strip()
+
+
 def statement_template() -> str:
     return _read("statement.txt")
 

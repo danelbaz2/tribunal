@@ -1,4 +1,4 @@
-"""The four tables of ARCHITECTURE.md Part 6.
+"""The three tables: cases, runs, llm_calls.
 
 Two rules shape this file.
 
@@ -10,8 +10,8 @@ read time. This is a deliberate departure from the Part 6 sketch, which drew a
 that can disagree with the rows it came from.
 
 **A stored case is immutable.** There is no update path for `cases`. Editing a
-charge file after a comparison exists silently invalidates that comparison,
-because the two runs no longer read the same case. A correction is a new case.
+charge file after runs exist against it would silently change what those runs
+mean retroactively. A correction is a new case.
 """
 
 from __future__ import annotations
@@ -65,21 +65,23 @@ class Case(Base):
 
 
 class Run(Base):
-    """One trial: seven calls against one case, in one situation."""
+    """One trial: seven calls against one case."""
 
     __tablename__ = "runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"))
 
-    situation: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="running")
 
-    #: The draw is reproducible from these two together: re-deriving the roster
-    #: from the seed and the pool gives the same assignment, byte for byte.
-    seed: Mapped[str] = mapped_column(String(64))
+    #: `identical` seats one model in all seven chairs; `different` seats
+    #: seven distinct models, one per slot. Chosen per run, not a stored
+    #: comparison between runs -- there is no feature that links two runs.
+    situation: Mapped[str] = mapped_column(String(16))
+
+    #: Which model sat in which slot. The whole record of the bench; nothing
+    #: else needs to be stored to know what ran.
     roster: Mapped[dict[str, str]] = mapped_column(JSONColumn)
-    pool: Mapped[list[str]] = mapped_column(JSONColumn)
 
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -161,29 +163,5 @@ class LlmCall(Base):
         CheckConstraint(
             "confidence IS NULL OR (confidence >= 0.0 AND confidence <= 1.0)",
             name="ck_llm_calls_confidence",
-        ),
-    )
-
-
-class Comparison(Base):
-    """Links one `identical` run to one `different` run of the same case.
-
-    Both runs must have status `finished`; a failed run appears in no
-    comparison, because a run of three statements is not comparable to a run
-    of four.
-    """
-
-    __tablename__ = "comparisons"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"))
-    run_identical_id: Mapped[int] = mapped_column(ForeignKey("runs.id"))
-    run_different_id: Mapped[int] = mapped_column(ForeignKey("runs.id"))
-
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    __table_args__ = (
-        UniqueConstraint(
-            "run_identical_id", "run_different_id", name="uq_comparisons_run_pair"
         ),
     )

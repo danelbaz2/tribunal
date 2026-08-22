@@ -1,8 +1,9 @@
 """Upload a charge file.
 
 The only write path for `cases`, and there is no update path at all: a stored
-case is immutable, because editing one after a comparison exists silently
-invalidates that comparison. A correction is a new case.
+case is immutable, because editing one after runs exist against it would
+silently change what those runs mean retroactively. A correction is a new
+case.
 
 One URL takes both input modes, because the interface offers them as two states
 of one control. The request is dispatched on its content type rather than

@@ -242,21 +242,61 @@
 }
 
 @layer utilities {
-  /* Fades only, <=150ms, ease-out. Nothing slides or bounces. */
-  .fade-in { animation: tribunal-fade 150ms ease-out both; }
-  @keyframes tribunal-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  /* The reveal: a section or a finished card arrives once, rising 10px as it
+     fades. Never replayed, and nothing else slides. */
+  .tb-enter { animation: tb-in 0.5s ease-out both; }
+  @keyframes tb-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
   }
 
-  /* The caret is the only moving element on the page. */
-  .caret-blink { animation: tribunal-caret 1s steps(1, end) infinite; }
-  @keyframes tribunal-caret {
-    0%, 50% { opacity: 1; }
-    50.01%, 100% { opacity: 0; }
+  /* Three dots while a call is in flight. With the chevron's rotation, the
+     only motion on the page. */
+  .tb-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    animation: tb-pulse 1.2s ease-in-out infinite;
+  }
+  .tb-dot:nth-child(2) { animation-delay: 0.18s; }
+  .tb-dot:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes tb-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.9; }
+  }
+
+  /* A statement's text is already whole the moment this plays -- rendering
+     it as it actually streamed in repaints the card on every chunk, which
+     reads as stutter on a slow connection rather than progress. This wipes
+     it into view once, after the wait is over, instead. */
+  .tb-reveal { animation: tb-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes tb-reveal {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+
+  /* A judge returns one structured object, never prose -- there is no
+     partial sentence to show while it is ruling. These bars stand for that
+     wait without pretending to be text: three shapes, not three words. */
+  .tb-shimmer-line {
+    height: 9px;
+    border-radius: 3px;
+    background: var(--color-neutral-300);
+    animation: tb-shimmer 1.6s ease-in-out infinite;
+  }
+  .tb-shimmer-line:nth-child(2) { animation-delay: 0.2s; }
+  .tb-shimmer-line:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes tb-shimmer {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.85; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .fade-in, .caret-blink { animation: none; }
+    .tb-enter, .tb-dot, .tb-reveal, .tb-shimmer-line { animation: none; }
+    .tb-dot { opacity: 0.6; }
+    .tb-reveal { clip-path: none; }
+    .tb-shimmer-line { opacity: 0.6; }
+    html { scroll-behavior: auto; }
   }
 }

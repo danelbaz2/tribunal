@@ -14,19 +14,20 @@ Status: **draft awaiting approval.** No code is written until this file is appro
 # Part 1 — The goal and its reason
 
 **Goal.** Build a system that runs a complete judicial deliberation on an arbitrary charge file
-using seven independent LLM calls — four advocates who state a position, three judges who rule —
-and that compares two situations: all seven slots on one model, versus seven distinct models.
+using seven independent LLM calls — four advocates who state a position, three judges who rule.
 
-**Reason, in one sentence.** *To find out whether a tribunal of diverse models reaches a different
-verdict, or reasons differently, than a tribunal of seven copies of the same mind.*
+**Reason, in one sentence.** *To see what a tribunal of seven distinct models produces on an
+arbitrary charge file, with no rebuttal and no inference from prose.*
 
-**How the agent uses this reason.** Every unwritten fork is settled in favour of the comparison
-remaining valid, never in favour of a nicer trial. Concretely:
+There is deliberately no built-in comparison feature. Whether a different roster (say, one model
+in all seven chairs) reaches a different verdict is a question answered by hand, by running
+trials and reading them side by side — not something the app computes or stores.
 
-- If completing a run and protecting comparability conflict, **comparability wins** — abandon the
-  run.
-- If a feature would make the courtroom more impressive but would differ between Situation A and
-  Situation B, **do not build it**.
+**How the agent uses this reason.** Every unwritten fork is settled in favour of the run finishing
+honestly, never in favour of a nicer trial. Concretely:
+
+- If completing a run and telling the truth about a failure conflict, **the truth wins** — a run
+  where any call failed is `failed`, never patched into looking whole.
 - Prefer recording a fact over displaying it. The database is the instrument; the UI is the
   readout.
 
@@ -47,12 +48,13 @@ Each criterion has exactly one true-or-false answer that a second reader can con
 3. The 3 verdicts sum to 3. `justified_count + not_justified_count = 3`, always.
 4. The headline on screen equals those counts — the string "2 justified — 1 not justified"
    is derived from the rows, never stored as prose and never computed twice.
-5. In Situation A, the 7 rows contain **exactly 1 distinct** model identifier.
-   In Situation B, they contain **exactly 7 distinct** model identifiers.
+5. In an `identical` run, the 7 rows contain **exactly 1 distinct** model identifier.
+   In a `different` run, they contain **exactly 7 distinct** model identifiers, one per slot,
+   drawn without replacement from `MODEL_POOL`.
 6. Every judgment row has `verdict ∈ {justified, not_justified}`, `confidence ∈ [0.0, 1.0]`, and
    **at least 2** reasons.
 7. No run reaches status `finished` unless all 7 calls succeeded. A run where any call failed
-   twice has status `failed` and appears in no comparison.
+   twice has status `failed`, and every row still records what happened to it.
 8. Every `llm_calls` row records model, slot, stage, duration, cost, word count, and the complete
    raw response.
 
@@ -75,18 +77,9 @@ not against the prompt template.
     across the first 7 runs. Any single mismatch is a defect, not a tolerance.
 14. **Case independence.** The whole system runs on a second, entirely unrelated charge file with
     **zero code changes** and produces a finished run.
-15. **Reconstitution.** Given a stored seed and pool, re-deriving the roster produces the same
-    slot→model assignment, byte for byte.
-
-## What the comparison screen must answer
-
-16. For each of the 3 judge slots: did the same slot reach the same verdict in Situation A and in
-    Situation B? Answerable at a glance, per slot.
-17. Wall-clock duration per situation, and per slot.
-18. Word count per statement, so a verbosity difference between situations is visible.
-
-Cost is recorded but is expected to be **zero on both sides**, since both situations draw from the
-free pool. Duration and agreement are the live differentiators — see Part 5.
+15. **The roster is a pure function of `MODEL_POOL` and `situation`.** With the pool unchanged,
+    convening the same situation seats the same models in the same slots every time — no random draw, nothing to
+    reconstitute.
 
 ---
 
@@ -105,8 +98,7 @@ not a layout.
 
 ## The 7 slots and their personas
 
-Slots are fixed and identical in both situations. Personas are fixed and identical in both
-situations. Only the model changes.
+Slots and personas are fixed for every run. Only the model in each chair varies.
 
 | Slot | Persona shown to judges | Position |
 |---|---|---|
@@ -139,12 +131,17 @@ fails the run. No fallback parser, no keyword matching, no inference from prose 
 
 ## Model assignment
 
-A pool of **free OpenRouter model identifiers** lives in config and must hold at least 7 entries.
+`MODEL_POOL` is a hand-picked, static list of **at least 7** free OpenRouter model identifiers,
+best first, set in `.env`. It is not checked against OpenRouter at startup — only for length.
+`situation` is chosen per run, at convene time:
 
-- **Situation A** draws **1** model from the pool and places it in all 7 slots as 7 independent
-  calls that share no state.
-- **Situation B** draws **7 distinct** models from the pool, without replacement, one per slot.
-- The **seed** and the resulting **slot→model assignment** are stored on the run.
+- **`identical`** seats the **first** model in the pool in all 7 chairs, as 7 independent calls
+  that share no state.
+- **`different`** seats the **first 7 distinct** models in the pool, one per slot, in the order
+  the pool names them.
+- The **slot→model assignment** (the roster) is stored on the run. Nothing else needs to be
+  stored to reproduce which models ran: with the same pool and situation, the same bench is
+  seated every time.
 - Temperature is fixed at the lowest value each model supports; the value actually sent is
   recorded per call.
 
@@ -186,8 +183,8 @@ fixtures/
 responses are captured and committed; the broken copies are committed. Only then is the
 orchestrator written.
 
-**Live validation, once per spiral turn.** Run both situations on the reference case and confirm
-criterion 13 by hand. Then run the second, unrelated charge file for criterion 14.
+**Live validation, once per spiral turn.** Run the reference case and confirm criterion 13
+(verdict fidelity) by hand. Then run the second, unrelated charge file for criterion 14.
 
 ---
 
@@ -207,28 +204,29 @@ The warnings you would give a colleague. Written once, permanently (slides 22–
 
 4. **Free models fail often** — rate limits, queue timeouts, silent truncation. Combined with
    "all 7 calls must succeed", expect a high rate of `failed` runs. This is the accepted cost of
-   comparability; surface the failing slot and model clearly so a re-run is one click.
+   running seven independent free-tier calls; surface the failing slot and model clearly so a
+   re-run is one click.
 5. **Free models frequently ignore output format instructions.** Weak models fail the schema more
-   than strong ones. Since Situation B draws 7 different models, B will fail more often than A —
-   and that asymmetry is a bias in *which runs survive to be compared*, not a neutral annoyance.
-   Record every failure so it can be reported.
+   than strong ones, and a run draws 7 different models — so expect the failure rate to track
+   which models happened to be seated. Record every failure so it can be reported.
 6. **Free models may ignore temperature.** Record what was requested and what the response
    reports; do not claim determinism you did not verify.
-7. **Free models disappear.** OpenRouter's free tier changes without notice. Validate the pool at
-   startup and fail with a clear message rather than mid-trial.
-8. **Cost comparison is dead on arrival.** Both situations cost zero, so "which was cheaper" has
-   no answer. Do not build a cost-comparison widget that always shows 0.00 — record cost, and
-   compare duration and agreement instead.
+7. **Free models disappear.** OpenRouter's free tier changes without notice. This project does
+   **not** validate the pool against OpenRouter at startup — `MODEL_POOL` is maintained by hand,
+   and a model that has left the tier simply fails the run that draws it, the same as any other
+   call failure. Accepted trade-off: simpler code, at the cost of finding out a model is gone only
+   when a run fails on it.
+8. **Cost is always zero**, since the pool draws from the free tier. Record it; do not build a
+   cost widget around it — it will always read $0.00.
 
-**Threats to the measurement itself**
+**Threats to any comparison a human draws between runs by hand**
 
-9. **One run per situation cannot separate signal from noise.** A judge slot that flips between A
-   and B might flip again on a re-run of A alone. Never phrase a result as "diverse models
-   disagree more" — phrase it as "in this run, slot 2 differed". The schema should tolerate
-   repeats being added in a later spiral turn.
-10. **Random draw is a second uncontrolled variable.** A Situation B difference may come from
-    *which* seven models were drawn, not from diversity. The seed is stored precisely so this can
-    be interrogated.
+9. **One run cannot separate signal from noise.** A judge slot's verdict might flip on a re-run
+   with the same roster. Never phrase a result as "diverse models disagree more" from a single
+   pair of runs — phrase it as "in this run, slot 2 differed".
+10. **The roster is a second variable if it changes between runs you're comparing.** A difference
+    between two runs may come from *which* seven models were seated, not from anything else that
+    changed. Read `runs.roster` before trusting a comparison across runs made at different times.
 11. **Model and slot are confounded.** Whatever model lands in `judge_1` is the only evidence you
     have about `judge_1`. Never attribute a slot's behaviour to its model from a single run.
 12. **A model may unmask itself inside its own statement** — "as an AI developed by …", or a
@@ -243,12 +241,12 @@ The warnings you would give a colleague. Written once, permanently (slides 22–
 
 **The pitfalls only we know**
 
-15. The charge file is uploaded once and referenced by every run. Editing it after a comparison
-    exists silently invalidates that comparison — the two runs no longer read the same case. Treat
-    a stored case as immutable; a correction is a new case.
-16. The same prompt template must serve both situations. Any per-model prompt tweak — even to help
-    a weak model return valid output — makes A and B non-comparable. If a tweak is needed, it
-    applies to all seven slots or to none.
+15. The charge file is uploaded once and referenced by every run. Editing it after the fact would
+    silently change what every run on it means retroactively. Treat a stored case as immutable; a
+    correction is a new case.
+16. The same prompt template must serve all seven slots. Any per-model prompt tweak — even to help
+    a weak model return valid output — makes the roster's diversity not the only thing varying
+    between runs. If a tweak is needed, it applies to all seven slots or to none.
 
 ---
 

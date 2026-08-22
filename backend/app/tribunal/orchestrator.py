@@ -11,13 +11,22 @@ the rules of the trial can be read and tested on their own, offline.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol
 
 from .advocates import Statement, hear_all
 from .judges import Ruling, rule_all
-from .roles import ADVOCATE_SLOTS, BY_SLOT, JUDGE_SLOTS, Caller, SlotFailure, StageFailed
+from .roles import (
+    ALL_SLOTS,
+    BY_SLOT,
+    Caller,
+    Gate,
+    NullGate,
+    SlotFailure,
+    StageFailed,
+)
 
 
 class Observer(Protocol):
@@ -47,6 +56,29 @@ class NullObserver:
     async def stage_failed(self, failures: list[SlotFailure]) -> None: ...
 
 
+def pacing_gate(max_concurrent: int) -> Gate:
+    """How many participants may hold the floor at once.
+
+    Pacing, not method. It changes nothing about what any call is sent.
+    Isolation is untouched: no advocate reads another whether they speak at
+    once or in turn.
+
+    It exists because the free tier answers 429 to a burst of four, and a rate
+    limit that failed a call would bias which runs survive to be compared.
+
+    A gate rather than a wrapper around the caller, because a participant's
+    turn covers its announcement as well as its call: announcing outside the
+    gate marks every slot live at once, which is what a real run showed --
+    four cards reasoning while one model worked and three queued.
+
+    The semaphore is first-come-first-served, so a limit of one also fixes the
+    order: the room fills in display order.
+    """
+    if max_concurrent < 1:
+        raise ValueError("max_concurrent must be at least 1")
+    return NullGate() if max_concurrent >= len(ALL_SLOTS) else asyncio.Semaphore(max_concurrent)
+
+
 @dataclass
 class Trial:
     """What the run produced. `finished` means all seven calls succeeded."""
@@ -73,7 +105,9 @@ async def run_trial(
     *,
     call: Caller,
     target_words: int,
+    min_statement_words: int = 60,
     observer: Observer | None = None,
+    max_concurrent: int = 1,
 ) -> Trial:
     """Hold the trial.
 
@@ -83,20 +117,29 @@ async def run_trial(
     a verdict from two judges is not the deliverable.
     """
     watcher: Observer = observer or NullObserver()
+    # One gate for the whole trial: stage 2 inherits the pace stage 1 was held
+    # to.
+    gate = pacing_gate(max_concurrent)
     trial = Trial(status="running")
 
     async def progress(slot: str, text: str) -> None:
         await watcher.call_progress(slot, text)
 
-    async def announce(slots: tuple[str, ...]) -> None:
-        for slot in slots:
-            await watcher.call_started(slot, BY_SLOT[slot].stage, roster[slot])
+    async def announce(slot: str) -> None:
+        await watcher.call_started(slot, BY_SLOT[slot].stage, roster[slot])
 
     # ── stage 1 ───────────────────────────────────────────────────────────
-    await announce(ADVOCATE_SLOTS)
     try:
         trial.statements = await hear_all(
-            roster, charge, call=call, target_words=target_words, on_progress=progress
+            roster,
+            charge,
+            call=call,
+            target_words=target_words,
+            min_words=min_statement_words,
+            on_progress=progress,
+            on_start=announce,
+            on_done=watcher.statement_done,
+            gate=gate,
         )
     except StageFailed as failure:
         trial.status = "failed"
@@ -105,23 +148,21 @@ async def run_trial(
         await watcher.stage_failed(failure.failures)
         return trial
 
-    for statement in trial.statements:
-        await watcher.statement_done(statement)
-
     # ── stage 2 ───────────────────────────────────────────────────────────
     # Reached only because all four statements exist.
-    await announce(JUDGE_SLOTS)
     try:
-        trial.rulings = await rule_all(roster, charge, trial.statements, call=call)
+        trial.rulings = await rule_all(
+            roster, charge, trial.statements, call=call,
+            on_start=announce,
+            on_done=watcher.ruling_done,
+            gate=gate,
+        )
     except StageFailed as failure:
         trial.status = "failed"
         trial.failures = failure.failures
         trial.finished_at = datetime.now(timezone.utc)
         await watcher.stage_failed(failure.failures)
         return trial
-
-    for ruling in trial.rulings:
-        await watcher.ruling_done(ruling)
 
     trial.status = "finished"
     trial.finished_at = datetime.now(timezone.utc)

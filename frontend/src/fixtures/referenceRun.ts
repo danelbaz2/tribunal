@@ -22,7 +22,7 @@ export const REFERENCE_CHARGE_TEXT =
   'handwritten record at 21:14 and reported the override to the ward manager the following ' +
   'morning.'
 
-const VEGA = `The countersignature rule was not written for ordinary evenings. It was written for exactly the evening described here: a night when the electronic record is unavailable, when no one can afterwards reconstruct who was present, and when a single clinician holds unsupervised access to a controlled substance. A safeguard that dissolves the moment it becomes inconvenient is not a safeguard.
+const BEN_ARI = `The countersignature rule was not written for ordinary evenings. It was written for exactly the evening described here: a night when the electronic record is unavailable, when no one can afterwards reconstruct who was present, and when a single clinician holds unsupervised access to a controlled substance. A safeguard that dissolves the moment it becomes inconvenient is not a safeguard.
 
 The hospital had a paper fallback protocol for network failure. It is two pages long, it names the ward manager as the countersigning authority out of hours, and it was not followed. The accused did not face a choice between the patient's pain and the rules; she faced a choice between the rules as written for outages and a faster route she preferred. That the faster route ended well is a fact about luck, not about judgement.
 
@@ -30,7 +30,7 @@ Nor was the interval brief in the sense that matters. Forty-one minutes is time 
 
 The tribunal should also weigh what it licenses. If the override is held justified here, on this record, then it is justified wherever a clinician sincerely believes the patient is suffering — which is to say, always. The rule would survive only in cases where nobody wanted to break it. I say the act was not justified.`
 
-const LYRA = `I will not argue that the accused was indifferent to her patient. I will argue that the charge file does not contain what would be needed to justify her, and that the absence is her doing.
+const ELDAD = `I will not argue that the accused was indifferent to her patient. I will argue that the charge file does not contain what would be needed to justify her, and that the absence is her doing.
 
 Consider what is missing. There is no pain score recorded before the override, and none after. There is no note of an attempt to telephone the attending, though the switchboard log would have shown one. There is no second clinician named, no time at which one was sought, no refusal recorded. The only evidence that the situation was urgent is the account of the person who decided it was — written the next morning, to a manager, in the knowledge that a rule had been broken.
 
@@ -38,7 +38,7 @@ Justification is not a feeling; it is a set of facts that a second person can ch
 
 There is a further cost. Every override of this kind that passes unchallenged makes the next one easier and less documented. The ward's medication controls are not a monument to bureaucracy; they are the reason that a missing ampoule can be traced to a person rather than to a night. On the record before this tribunal, the act was not justified.`
 
-const ORION = `A rule that cannot be obeyed does not bind. On the evening in question the countersignature required by policy was an electronic one, and the electronic record was down. The accused was not choosing between compliance and speed; she was standing in front of a locked cabinet holding a control that the institution itself had rendered unavailable, beside a patient in severe pain hours out of surgery.
+const FELDMAN = `A rule that cannot be obeyed does not bind. On the evening in question the countersignature required by policy was an electronic one, and the electronic record was down. The accused was not choosing between compliance and speed; she was standing in front of a locked cabinet holding a control that the institution itself had rendered unavailable, beside a patient in severe pain hours out of surgery.
 
 What she did next is the whole of the case, and it is entirely to her credit. She used the override that the cabinet manufacturer provides for precisely this circumstance — an act which is logged, mechanically, in the cabinet's own memory, and which she could not have concealed had she wished to. She gave a standard dose of a standard drug, not an unusual one. She wrote the administration down within minutes, in ink, with the time. She reported herself the following morning, to the person with the authority to discipline her. Every one of these is the behaviour of a clinician who expected to be examined and intended to be.
 
@@ -46,7 +46,7 @@ Set against that is a countersignature that would have recorded nothing the cabi
 
 The duty of care is not suspended when the network is. The act was justified.`
 
-const DRACO = `The charge describes a failure of the institution before it describes an act of the accused. Forty-one minutes without a record is not a condition a ward nurse creates; it is a condition a ward nurse is left standing in. Policy is silent on what a single clinician should do when the countersigning system it depends on has failed, and silence is not permission to let a patient wait.
+const BEN_ZUR = `The charge describes a failure of the institution before it describes an act of the accused. Forty-one minutes without a record is not a condition a ward nurse creates; it is a condition a ward nurse is left standing in. Policy is silent on what a single clinician should do when the countersigning system it depends on has failed, and silence is not permission to let a patient wait.
 
 The tribunal is asked to treat a paper protocol as though it were a live instruction. It is a two-page document filed against an outage that had, at that hour, no precedent on the ward. Its existence is a fact; its reachability at 21:14, on a floor with one duty nurse, is an assumption.
 
@@ -80,10 +80,10 @@ function statement(slot: Slot, model: string, text: string, durationMs: number):
 }
 
 const FINISHED_CALLS: LlmCall[] = [
-  statement('advocate_against_1', ROSTER_DIFFERENT.advocate_against_1, VEGA, 12_400),
-  statement('advocate_against_2', ROSTER_DIFFERENT.advocate_against_2, LYRA, 9_800),
-  statement('advocate_for_1', ROSTER_DIFFERENT.advocate_for_1, ORION, 14_100),
-  statement('advocate_for_2', ROSTER_DIFFERENT.advocate_for_2, DRACO, 11_600),
+  statement('advocate_against_1', ROSTER_DIFFERENT.advocate_against_1, BEN_ARI, 12_400),
+  statement('advocate_against_2', ROSTER_DIFFERENT.advocate_against_2, ELDAD, 9_800),
+  statement('advocate_for_1', ROSTER_DIFFERENT.advocate_for_1, FELDMAN, 14_100),
+  statement('advocate_for_2', ROSTER_DIFFERENT.advocate_for_2, BEN_ZUR, 11_600),
   {
     slot: 'judge_1',
     stage: 'judgment',
@@ -143,23 +143,13 @@ export const REFERENCE_RUN: Run = {
   caseTitle: REFERENCE_CASE_TITLE,
   status: 'finished',
   situation: 'different',
-  seed: '0x5f3a91',
   roster: ROSTER_DIFFERENT,
   startedAt: STARTED_AT,
   finishedAt: new Date(Date.parse(STARTED_AT) + 41_200).toISOString(),
   calls: FINISHED_CALLS,
 }
 
-export function fixtureExtract(charge: Charge, file?: File): Promise<ExtractedCharge> {
-  if (charge.source === 'file') {
-    return Promise.resolve({
-      caseId: 24,
-      title: file?.name ?? 'charge.pdf',
-      wordCount: 1842,
-      pages: 4,
-      hasTextLayer: true,
-    })
-  }
+export function fixtureExtract(charge: Charge): Promise<ExtractedCharge> {
   return Promise.resolve({
     caseId: 24,
     title: REFERENCE_CASE_TITLE,
@@ -231,7 +221,7 @@ export function fixtureStream(onRun: (run: Run) => void): () => void {
       const done = finished.get(slot)!
       const partial = done.text ? `${done.text.slice(0, 320)}` : undefined
       clock += 700
-      at(clock, (run) => setCall(run, slot, { status: 'writing', text: partial, durationMs: 0 }))
+      at(clock, (run) => setCall(run, slot, { status: 'live', text: partial, durationMs: 0 }))
       clock += 1400
       at(clock, (run) => setCall(run, slot, { ...done }))
     }

@@ -22,6 +22,8 @@ import json
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -46,6 +48,14 @@ class ModelResponse:
     #: frequently ignore temperature; a null here is the honest answer, not a
     #: reason to claim the requested value was honoured.
     temperature_reported: float | None
+    #: Why the model stopped. "length" means it was cut off mid-argument --
+    #: which is not a shorter statement, it is an incomplete one.
+    finish_reason: str | None = None
+    #: What it generated, and how much of that was thinking nobody reads.
+    #: Recorded because it is the largest single explanation of duration, and
+    #: duration is a reported finding (criterion 17).
+    tokens: int | None = None
+    thinking_tokens: int | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -107,19 +117,70 @@ class OpenRouterClient:
 
         Retried once on a transport failure. A second failure raises, and the
         caller fails the call rather than inventing a body for it.
+
+        **A 429 is not an attempt.** It is the gateway saying "not now" -- the
+        model never saw the prompt and never answered it. Waiting and asking
+        again is the same question asked once, so it does not consume the one
+        retry a real failure gets. What bounds it instead is a total waiting
+        budget: past that, the call fails like any other, and the run with it.
+        Keeping the two apart matters, because counting rate limits as failures
+        would make a run look worse than it is -- seven models, seven chances
+        to be told to wait.
         """
         last_error: Exception | None = None
+        waited = 0.0
+        attempt = 1
 
-        for attempt in range(1, self._settings.max_attempts + 1):
+        while attempt <= self._settings.max_attempts:
             started = time.perf_counter()
             try:
-                if on_chunk is not None:
-                    return await self._stream(model, prompt, started, on_chunk)
-                return await self._request(model, prompt, started)
+                coro = (
+                    self._stream(model, prompt, started, on_chunk)
+                    if on_chunk is not None
+                    else self._request(model, prompt, started)
+                )
+                try:
+                    return await asyncio.wait_for(
+                        coro, timeout=self._settings.request_timeout_seconds
+                    )
+                except TimeoutError as error:
+                    # `httpx.Timeout` bounds a single read, not the call: a
+                    # model that dribbles bytes resets that clock forever and
+                    # never trips it. This is the one deadline that covers the
+                    # whole call, start to last byte.
+                    raise OpenRouterError(
+                        f"{model} did not answer within "
+                        f"{self._settings.request_timeout_seconds:.0f}s."
+                    ) from error
+
+            except httpx.HTTPStatusError as error:
+                if error.response.status_code == 429:
+                    delay = _retry_after(error.response, self._settings.rate_limit_pause_seconds)
+                    if waited + delay <= self._settings.rate_limit_max_wait_seconds:
+                        waited += delay
+                        await asyncio.sleep(delay)
+                        continue  # deliberately not `attempt += 1`
+                    raise OpenRouterError(
+                        f"{model}: rate limited, and {waited:.0f}s of waiting was not "
+                        "enough. Lower MAX_CONCURRENT_CALLS, or wait for the free "
+                        "tier's window to reset."
+                    ) from error
+
+                # A 4xx is the gateway refusing the request, and it says why in
+                # the body. `raise_for_status()` throws that away, which turned
+                # "Reasoning is mandatory for this endpoint" into a bare 400 and
+                # cost an afternoon. Asking again cannot help either.
+                detail = _error_detail(error.response)
+                if 400 <= error.response.status_code < 500:
+                    raise OpenRouterError(f"{model}: {detail}") from error
+                last_error = OpenRouterError(detail)
+
             except (httpx.HTTPError, OpenRouterError, json.JSONDecodeError) as error:
                 last_error = error
-                if attempt < self._settings.max_attempts:
-                    await asyncio.sleep(1.0)
+
+            attempt += 1
+            if attempt <= self._settings.max_attempts:
+                await asyncio.sleep(1.0)
 
         raise OpenRouterError(f"{model}: {last_error}") from last_error
 
@@ -128,6 +189,14 @@ class OpenRouterClient:
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": self._settings.temperature,
+            # Asked for explicitly, because a provider default is silent and
+            # differs between providers -- which would make statement length a
+            # measure of the gateway rather than of the model. One value for
+            # all seven slots.
+            "max_tokens": self._settings.max_response_tokens,
+            # `effort: "none"` prevents the reasoning tokens being generated at
+            # all. `exclude` would only hide them and save nothing.
+            "reasoning": {"effort": self._settings.reasoning_effort},
             "stream": stream,
             # Ask for the cost back with the response, so cost is measured
             # rather than assumed to be zero because the tier says so.
@@ -147,6 +216,21 @@ class OpenRouterClient:
             raise OpenRouterError(f"{model} returned an empty body")
         return self._response(model, text, started, payload)
 
+    @staticmethod
+    def _refuse_if_truncated(model: str, finish_reason: str | None) -> None:
+        """A cut-off argument is not a short argument.
+
+        Storing it would put half a case in front of three judges and count
+        its words as if the model had chosen to stop there. It is a failed
+        call, and a failed call fails the run.
+        """
+        if finish_reason == "length":
+            raise OpenRouterError(
+                f"{model} was cut off at the token limit mid-argument. Raise "
+                "MAX_RESPONSE_TOKENS, or accept that this model cannot finish "
+                "a statement."
+            )
+
     async def _stream(
         self, model: str, prompt: str, started: float, on_chunk: ChunkHandler
     ) -> ModelResponse:
@@ -156,6 +240,12 @@ class OpenRouterClient:
         async with self._http.stream(
             "POST", "/chat/completions", json=self._body(model, prompt, stream=True)
         ) as response:
+            if response.is_error:
+                # The body must be read before `raise_for_status` -- a
+                # streaming response that errors before any chunk is read
+                # cannot have its content (the gateway's error message)
+                # accessed later, in the caller's handler, without this.
+                await response.aread()
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line.startswith("data: "):
@@ -164,8 +254,12 @@ class OpenRouterClient:
                 if data == "[DONE]":
                     break
                 chunk = json.loads(data)
-                payload = chunk
                 delta = _delta_of(chunk)
+                # Keep the last chunk that says anything about how it ended:
+                # the final one often carries the finish reason and the usage
+                # and nothing else.
+                if _finish_reason(chunk) or chunk.get("usage") or delta:
+                    payload = _merge(payload, chunk)
                 if delta:
                     text += delta
                     await on_chunk(text)
@@ -177,6 +271,8 @@ class OpenRouterClient:
     def _response(
         self, model: str, text: str, started: float, payload: dict[str, Any]
     ) -> ModelResponse:
+        finish_reason = _finish_reason(payload)
+        self._refuse_if_truncated(model, finish_reason)
         usage = payload.get("usage") or {}
         return ModelResponse(
             model=model,
@@ -185,104 +281,13 @@ class OpenRouterClient:
             cost=float(usage.get("cost") or 0.0),
             temperature_requested=self._settings.temperature,
             temperature_reported=_reported_temperature(payload),
+            finish_reason=finish_reason,
+            tokens=_int_or_none(usage.get("completion_tokens")),
+            thinking_tokens=_int_or_none(
+                (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+            ),
             raw=payload,
         )
-
-    # ── the pool ──────────────────────────────────────────────────────────
-
-    async def catalogue(self) -> list[dict[str, Any]]:
-        """Everything OpenRouter currently offers. The endpoint needs no key."""
-        response = await self._http.get("/models")
-        response.raise_for_status()
-        return list(response.json().get("data", []))
-
-    async def available_models(self) -> set[str]:
-        return {entry["id"] for entry in await self.catalogue()}
-
-    async def discover_free_pool(self, min_context_length: int) -> tuple[str, ...]:
-        """The free models that exist *today*.
-
-        The free tier changes without notice, so a hand-written list decays
-        into a server that refuses to start. Asking OpenRouter what is there
-        keeps the pool honest -- at the cost that the pool is no longer the
-        same set from one week to the next, which is why every run records the
-        pool it drew from.
-        """
-        return select_free_models(await self.catalogue(), min_context_length)
-
-    async def validate_pool(self, pool: tuple[str, ...] | list[str]) -> None:
-        """Fail at startup, not mid-trial.
-
-        Used when a pool has been pinned by hand. A model that has vanished
-        should stop the server with a clear message rather than surface as a
-        failed run three minutes into a deliberation.
-        """
-        available = await self.available_models()
-        missing = sorted(set(pool) - available)
-        if missing:
-            raise OpenRouterError(
-                "These pinned pool models are not available on OpenRouter any more: "
-                + ", ".join(missing)
-                + ". Correct MODEL_POOL, or unset it to draw from the live free tier."
-            )
-
-
-def select_free_models(
-    catalogue: list[dict[str, Any]], min_context_length: int
-) -> tuple[str, ...]:
-    """Which of OpenRouter's models may sit on this bench.
-
-    Pure, so it is tested against a captured catalogue rather than the live
-    tier. Four conditions, each of them mechanical -- no model is ever named
-    here, because a hand-picked list is a hand-picked result.
-
-    1. **Costs nothing.** Prompt, completion and per-request price are all
-       zero. This is what makes "cost is zero on both sides" a measured fact
-       rather than an assumption about a tier.
-    2. **Carries the `:free` suffix.** Redundant against (1) for most models,
-       but it is the line that excludes `openrouter/free` -- a router alias
-       that resolves to a different model on every call. Seating that in all
-       seven chairs would look like Situation A and be nothing of the kind.
-       It also drops the zero-priced models that are not chat models at all
-       (a music model, an anonymous stealth endpoint).
-    3. **Takes text and returns text.** An image-only or audio model cannot
-       argue a case.
-    4. **Holds a transcript.** A judge is sent the charge file plus four
-       statements; a small context window fails stage 2 every time.
-
-    Returned sorted, so the pool is a stable ordered set and the seed draws
-    the same bench from the same tier.
-    """
-    chosen = []
-    for entry in catalogue:
-        identifier = entry.get("id")
-        if not isinstance(identifier, str) or not identifier.endswith(":free"):
-            continue
-
-        pricing = entry.get("pricing") or {}
-        if not all(_is_zero(pricing.get(key, "0")) for key in ("prompt", "completion", "request")):
-            continue
-
-        architecture = entry.get("architecture") or {}
-        if "text" not in (architecture.get("input_modalities") or []):
-            continue
-        if "text" not in (architecture.get("output_modalities") or []):
-            continue
-
-        if (entry.get("context_length") or 0) < min_context_length:
-            continue
-
-        chosen.append(identifier)
-
-    return tuple(sorted(set(chosen)))
-
-
-def _is_zero(value: object) -> bool:
-    try:
-        return float(value) == 0.0  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return False
-
 
 def _content_of(payload: dict[str, Any]) -> str:
     choices = payload.get("choices") or []
@@ -292,11 +297,66 @@ def _content_of(payload: dict[str, Any]) -> str:
     return message.get("content") or ""
 
 
+def _merge(payload: dict[str, Any], chunk: dict[str, Any]) -> dict[str, Any]:
+    """Carry forward what a streamed answer says about how it ended.
+
+    Chunks arrive one at a time and the interesting fields are spread across
+    them; the last chunk alone is not the whole story.
+    """
+    merged = dict(payload)
+    merged.update({k: v for k, v in chunk.items() if k != "choices"})
+    if _finish_reason(chunk):
+        merged["choices"] = chunk["choices"]
+    elif "choices" not in merged:
+        merged["choices"] = chunk.get("choices", [])
+    return merged
+
+
+def _finish_reason(payload: dict[str, Any]) -> str | None:
+    choices = payload.get("choices") or []
+    if not choices:
+        return None
+    reason = choices[0].get("finish_reason") or choices[0].get("native_finish_reason")
+    return reason if isinstance(reason, str) else None
+
+
 def _delta_of(chunk: dict[str, Any]) -> str:
     choices = chunk.get("choices") or []
     if not choices:
         return ""
     return (choices[0].get("delta") or {}).get("content") or ""
+
+
+def _error_detail(response: httpx.Response) -> str:
+    """What the gateway actually said, when it said anything."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return f"HTTP {response.status_code}"
+    error = payload.get("error") if isinstance(payload, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    return f"HTTP {response.status_code}: {message}" if message else f"HTTP {response.status_code}"
+
+
+def _int_or_none(value: object) -> int | None:
+    return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _retry_after(response: httpx.Response, default: float) -> float:
+    """How long the gateway asked us to wait.
+
+    `Retry-After` is seconds, or an HTTP date. When it says neither, fall back
+    to the configured pause rather than guessing something clever.
+    """
+    header = response.headers.get("retry-after")
+    if header:
+        try:
+            return max(0.0, float(header))
+        except ValueError:
+            parsed = parsedate_to_datetime(header)
+            if parsed is not None:
+                return max(0.0, (parsed - datetime.now(parsed.tzinfo)).total_seconds())
+    return default
 
 
 def _reported_temperature(payload: dict[str, Any]) -> float | None:

@@ -1,52 +1,54 @@
 """Who sits where.
 
-The draw is a pure function of the seed and the pool. Given both, re-deriving
-a roster produces the same slot-to-model assignment byte for byte -- which is
-the only reason the seed is worth storing (criterion 15).
-
-The seed exists for a second reason too. A difference found in Situation B may
-come from *which* seven models were drawn rather than from diversity itself;
-storing the seed is what makes that interrogable instead of arguable.
+The bench is read off the top of the pool, not drawn at random: `identical`
+seats the first model in all seven chairs, `different` seats the first seven,
+one per slot, in the order `MODEL_POOL` names them.
 """
 
 from __future__ import annotations
 
-import secrets
-from random import Random
+from typing import Literal
 
-from .roles import ALL_SLOTS, Situation
+from .roles import ALL_SLOTS
 
-
-def new_seed() -> str:
-    """A fresh seed, recorded with the run it draws."""
-    return secrets.token_hex(8)
+Situation = Literal["identical", "different"]
 
 
-def draw_roster(seed: str, pool: tuple[str, ...] | list[str], situation: Situation) -> dict[str, str]:
+class BenchTooSmall(ValueError):
+    """Fewer models in the pool than there are chairs to fill."""
+
+
+def seat_bench(pool: tuple[str, ...] | list[str], situation: Situation) -> dict[str, str]:
     """Assign a model to each of the seven slots.
 
-    * `identical` -- one model drawn from the pool, seated in all seven slots.
-      They remain seven independent calls sharing no state; one model in seven
-      chairs is not one conversation.
-    * `different` -- seven distinct models drawn without replacement, one per
+    * `identical` -- the first model in the pool, seated in all seven slots.
+      They remain seven independent calls sharing no state; one model in
+      seven chairs is not one conversation.
+    * `different` -- the first seven distinct models in the pool, one per
       slot.
     """
-    models = sorted(set(pool))
-    if len(models) < len(ALL_SLOTS):
-        raise ValueError(
-            f"The pool holds {len(models)} models; {len(ALL_SLOTS)} are needed. "
-            "Correct the pool in app/config.py."
-        )
+    ordered = _ordered_unique(pool)
 
-    random = Random(seed)
+    if not ordered:
+        raise BenchTooSmall("The pool is empty; no bench can be seated.")
 
     if situation == "identical":
-        chosen = random.choice(models)
-        return {slot: chosen for slot in ALL_SLOTS}
+        return {slot: ordered[0] for slot in ALL_SLOTS}
 
-    drawn = random.sample(models, len(ALL_SLOTS))
-    return dict(zip(ALL_SLOTS, drawn, strict=True))
+    if len(ordered) < len(ALL_SLOTS):
+        raise BenchTooSmall(
+            f"{len(ordered)} distinct models are configured and {len(ALL_SLOTS)} "
+            "chairs need distinct ones. Add models to MODEL_POOL, or run `identical`."
+        )
+
+    return dict(zip(ALL_SLOTS, ordered[: len(ALL_SLOTS)], strict=True))
 
 
-def distinct_models(roster: dict[str, str]) -> int:
-    return len(set(roster.values()))
+def _ordered_unique(pool: tuple[str, ...] | list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for model in pool:
+        if model not in seen:
+            seen.add(model)
+            ordered.append(model)
+    return ordered

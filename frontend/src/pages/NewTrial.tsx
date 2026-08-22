@@ -1,108 +1,109 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Nav } from '../components/Nav'
-import { ChargeUpload, type ChargeMode } from '../components/ChargeUpload'
-import { submitCharge, type ExtractedCharge } from '../api'
-import { countWords } from '../lib/derive'
+import { ChargeUpload } from '../components/ChargeUpload'
+import { RosterView } from '../components/RosterView'
+import { StatementsView } from '../components/StatementsView'
+import { JudgePanel } from '../components/JudgePanel'
+import { Result } from '../components/Result'
+import { submitCharge } from '../api'
+import { countWords, doneCount, failedCalls } from '../lib/derive'
 import { useRunStore } from '../lib/runStore'
-import type { Charge, Situation } from '../types'
+import { ADVOCATE_SLOTS } from '../lib/slots'
+import { stepFor, useAutoScrollEscape, useSequencedScroll } from '../lib/useSequencedScroll'
+import type { Charge, Run, Situation } from '../types'
 
-// Screen 1 — the charge file goes in and the bench is chosen. These are the
-// only two user inputs in the whole flow: after "Convene the tribunal" the run
-// goes stage 1 → stage 2 → result on its own.
+// The whole trial, on one page.
+//
+// It is one route rather than four screens because there is one act in it: the
+// user supplies a charge, presses convene, and everything after that happens
+// without them. Three routes implied three decisions; there is only ever one.
+//
+// The page follows the run down: the statements heading when it starts, the
+// judgment heading once every advocate has spoken, the verdict once every
+// judge has ruled — each stage's own framing first, its cards read together
+// underneath. It stops following the moment the reader scrolls for
+// themselves.
 
 /**
- * The client-side floor for "too short". It is a pre-check, not the ruling —
- * whether a document accuses anybody of anything is decided by the backend at
- * upload, and its refusal is what gets shown.
+ * The client-side floor for "too short". A pre-check, not the ruling — whether
+ * a document accuses anybody of anything is decided by the backend at upload,
+ * and its refusal is what gets shown.
  */
 const MIN_CHARGE_WORDS = 25
 
-const BENCH: { value: Situation; title: string; body: string }[] = [
-  {
-    value: 'identical',
-    title: 'One model, seven times',
-    body: 'A single model drawn from the free pool sits in all seven chairs, as seven independent calls sharing no state.',
-  },
-  {
-    value: 'different',
-    title: 'Seven different models',
-    body: 'Seven distinct models drawn without replacement, one per slot. The draw and its seed are recorded with the run.',
-  },
-]
+/**
+ * Where the reader already is when a run fails — not at the top of the page,
+ * which by then is scrolled well out of view. A run only ever fails one
+ * stage: every failed slot is an advocate, or every failed slot is a judge,
+ * never a mix, so the failed slots alone say which section to land next to.
+ */
+function FailureBanner({ run, onStartOver }: { run: Run; onStartOver: () => void }) {
+  return (
+    <div className="mx-auto max-w-[1320px] px-[48px] pb-[34px]">
+      <div
+        className="tb-enter flex items-center justify-between gap-4 border border-accent px-5 py-4"
+        role="alert"
+      >
+        <p className="m-0 text-meta text-accent-700">
+          The run failed —{' '}
+          {failedCalls(run)
+            .map((call) => `${call.slot} (${call.model})`)
+            .join(', ')}
+          . All seven calls must succeed or nothing is kept.
+        </p>
+        <button type="button" className="btn btn-secondary shrink-0" onClick={onStartOver}>
+          Start over
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export function NewTrial() {
-  const navigate = useNavigate()
-  const { start } = useRunStore()
+  const { run, error, start, reset } = useRunStore()
 
-  const [mode, setMode] = useState<ChargeMode>('text')
   const [text, setText] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [extracted, setExtracted] = useState<ExtractedCharge | null>(null)
-  const [extracting, setExtracting] = useState(false)
-  const [chargeError, setChargeError] = useState<string | null>(null)
-
   const [situation, setSituation] = useState<Situation>('identical')
   const [convening, setConvening] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // The word count is the live readout of extraction, in both input modes.
-  const wordCount = useMemo(
-    () => (mode === 'file' ? (extracted?.wordCount ?? 0) : countWords(text)),
-    [mode, text, extracted],
-  )
+  const started = run !== null
+  const done = run ? doneCount(run) : 0
+  const running = run?.status === 'running'
+  // A run fails one stage at a time: every failed slot is an advocate, or
+  // every failed slot is a judge, never a mix — so the first failed slot
+  // alone says which section the banner belongs next to.
+  const failedInAdvocates = run
+    ? failedCalls(run).every((call) => (ADVOCATE_SLOTS as readonly string[]).includes(call.slot))
+    : true
 
-  const charge: Charge = useMemo(
-    () => ({
-      source: mode,
-      text,
-      filename: file?.name,
-      pages: extracted?.pages,
-      wordCount,
-      hasTextLayer: mode === 'file' ? (extracted?.hasTextLayer ?? false) : true,
-    }),
-    [mode, text, file, extracted, wordCount],
-  )
+  const following = useAutoScrollEscape(running)
+  const sequencer = useSequencedScroll(stepFor(done, started), following)
 
-  const valid =
-    mode === 'file'
-      ? extracted !== null && extracted.hasTextLayer && extracted.wordCount >= MIN_CHARGE_WORDS
-      : wordCount >= MIN_CHARGE_WORDS
+  const wordCount = useMemo(() => countWords(text), [text])
 
-  async function handleFileSelected(chosen: File) {
-    setFile(chosen)
-    setExtracted(null)
-    setChargeError(null)
-    setExtracting(true)
+  const charge: Charge = useMemo(() => ({ text, wordCount }), [text, wordCount])
+
+  const valid = wordCount >= MIN_CHARGE_WORDS
+
+  async function convene(caseId?: number) {
+    setSubmitError(null)
+    setConvening(true)
     try {
-      // Extraction happens at upload so a scanned PDF is refused here rather
-      // than sending the tribunal to deliberate on nonsense.
-      const result = await submitCharge({ ...charge, source: 'file' }, chosen)
-      if (!result.hasTextLayer || result.wordCount === 0) {
-        setChargeError(
-          'No extractable text in that document. A scanned page is not a charge file; supply one with a text layer.',
-        )
-        setExtracted(result)
-        return
-      }
-      setExtracted(result)
+      const id = caseId ?? (await submitCharge(charge)).caseId
+      await start(id, situation)
+      sequencer.goTo('statements')
     } catch (cause) {
-      setChargeError((cause as Error).message)
+      setSubmitError((cause as Error).message)
     } finally {
-      setExtracting(false)
+      setConvening(false)
     }
   }
 
-  function handleFileCleared() {
-    setFile(null)
-    setExtracted(null)
-    setChargeError(null)
-  }
-
-  async function handleConvene() {
+  function handleConvene() {
     setSubmitError(null)
 
-    if (mode === 'text' && countWords(text) === 0) {
+    if (wordCount === 0) {
       setSubmitError('The charge file is empty. There is nothing here to try.')
       return
     }
@@ -112,118 +113,88 @@ export function NewTrial() {
       )
       return
     }
+    void convene()
+  }
 
-    setConvening(true)
-    try {
-      const caseId = extracted?.caseId ?? (await submitCharge(charge)).caseId
-      await start(caseId, situation)
-      navigate('/courtroom')
-    } catch (cause) {
-      setSubmitError((cause as Error).message)
-    } finally {
-      setConvening(false)
-    }
+  function startOver() {
+    reset()
+    setSubmitError(null)
+    sequencer.toTop()
   }
 
   return (
-    <>
-      <Nav status="7 slots · 4 advocates · 3 judges" />
+    <div className="min-h-screen">
+      <Nav started={started} done={done} />
 
-      <div className="mx-auto max-w-[920px] px-[68px] pb-[56px] pt-[44px]">
-        <p className="mb-[14px] mt-0 font-heading text-kicker uppercase tracking-kicker-wider text-accent">
-          Instrument of deliberation
-        </p>
-        <h1 className="mb-[18px] mt-0 max-w-[15ch] text-display font-normal">
-          A trial held entirely by machines.
-        </h1>
-        <p className="prose-justified mb-[8px] mt-0 max-w-[62ch] text-lede">
-          One charge file is read by four advocates who never see one another — two arguing the act
-          was <em>not justified</em>, two arguing it <em>was</em>. Their four statements are then
-          read by three judges who never see one another either. Each judge commits to a binary
-          verdict, states a confidence, and gives at least two reasons. Seven independent calls;
-          nothing inferred from prose.
-        </p>
-        <p className="prose-justified m-0 max-w-[62ch] text-lede">
-          Nothing about this particular case lives in the system. Replace the charge file and the
-          tribunal sits again, unchanged.
-        </p>
-
-        <div className="hr mb-[30px] mt-[36px]" />
-
-        <ChargeUpload
-          mode={mode}
-          onModeChange={setMode}
-          text={text}
-          onTextChange={setText}
-          file={file}
-          extracted={extracted}
-          onFileSelected={handleFileSelected}
-          onFileCleared={handleFileCleared}
-          wordCount={wordCount}
-          extracting={extracting}
-          error={chargeError}
-        />
-
-        <div className="hr mb-[26px] mt-0" />
-
-        <h3 className="mb-[6px] mt-0 text-h3">The bench</h3>
-        <p className="text-muted mb-[18px] mt-0 max-w-[60ch] text-body-sm">
-          Seven slots are filled either by one model seven times over, or by seven distinct models.
-          Everything else — the charge, the instructions, the order of the stages — is identical
-          between the two.
-        </p>
-        <div className="mb-[30px] grid grid-cols-2 gap-[18px]">
-          {BENCH.map((option) => (
-            <label
-              key={option.value}
-              className="card cursor-pointer gap-[8px]"
-              // Selection is an inset hairline, never a fill.
-              style={
-                situation === option.value
-                  ? { boxShadow: 'inset 0 0 0 1px var(--color-accent)' }
-                  : undefined
-              }
-            >
-              <div className="flex items-center gap-[10px]">
-                <span className="radio">
-                  <input
-                    type="radio"
-                    name="situation"
-                    checked={situation === option.value}
-                    onChange={() => setSituation(option.value)}
-                  />
-                  <span className="dot" />
-                </span>
-                <span className="card-title text-card-title-sm">{option.title}</span>
-              </div>
-              <p className="card-body m-0 text-body-sm">{option.body}</p>
-            </label>
-          ))}
-        </div>
-
-        <div className="hr mb-[22px] mt-0" />
-
-        {submitError && (
-          <p className="fade-in mb-[14px] text-meta text-accent-700" role="alert">
-            {submitError}
+      <section className="border-b border-divider px-[48px] pb-[72px] pt-[64px]">
+        <div className="mx-auto max-w-[900px]">
+          <p className="mb-[14px] mt-0 font-heading text-kicker uppercase tracking-kicker-wider text-accent">
+            Instrument of deliberation
           </p>
-        )}
+          <h1 className="mb-[18px] mt-0 max-w-[15ch] text-[54px] font-normal leading-[1.12] tracking-[-0.02em]">
+            A trial held entirely by machines.
+          </h1>
+          <p className="prose-justified mb-[30px] mt-0 max-w-[62ch] text-lede">
+            Four advocates read the charge and never read one another — two arguing the act was{' '}
+            <em>not justified</em>, two that it <em>was</em>. Three judges then read the four
+            statements, and never read one another either. Each commits to a binary verdict with a
+            confidence and at least two reasons. Seven independent calls, and nothing inferred from
+            prose.
+          </p>
 
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            className="btn btn-primary px-[22px] py-[11px] text-[15px]"
-            disabled={!valid || convening || extracting}
-            onClick={() => void handleConvene()}
-          >
-            {convening ? 'Convening…' : 'Convene the tribunal'}
-          </button>
-          <span className="text-muted max-w-[52ch] text-meta">
-            Once convened the trial runs to its end without you: four statements, then three
-            judgments, then the count. All seven calls must succeed or the run is marked failed.
-          </span>
+          <div className="hr mb-6 mt-0" />
+
+          <ChargeUpload text={text} onTextChange={setText} wordCount={wordCount} />
+
+          <div className="hr mb-6 mt-0" />
+
+          <RosterView situation={situation} onChange={setSituation} disabled={running} />
+
+          <div className="hr mb-[22px] mt-0" />
+
+          {(submitError || error) && (
+            <p className="tb-enter mb-[14px] text-meta text-accent-700" role="alert">
+              {submitError ?? error}
+            </p>
+          )}
+
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              className="btn btn-primary px-[22px] py-[11px] text-[15px]"
+              disabled={!valid || convening || running}
+              onClick={handleConvene}
+            >
+              {convening ? 'Convening…' : started ? 'Convene again' : 'Convene the tribunal'}
+            </button>
+            <span className="text-muted max-w-[52ch] text-meta">
+              Once convened the trial runs to its end without you: four statements, then three
+              judgments, then the count.
+            </span>
+          </div>
         </div>
-      </div>
-    </>
+      </section>
+
+      {run && <StatementsView run={run} sequencer={sequencer} />}
+      {run && run.status === 'failed' && failedInAdvocates && (
+        <FailureBanner run={run} onStartOver={startOver} />
+      )}
+      {run && done >= 4 && <JudgePanel run={run} sequencer={sequencer} />}
+      {run && run.status === 'failed' && !failedInAdvocates && (
+        <FailureBanner run={run} onStartOver={startOver} />
+      )}
+      {run && done >= 7 && (
+        <Result
+          run={run}
+          sequencer={sequencer}
+          busy={convening}
+          onNewCharge={() => {
+            setText('')
+            sequencer.toTop()
+          }}
+          onRunAgain={() => void convene(run.caseId)}
+        />
+      )}
+    </div>
   )
 }

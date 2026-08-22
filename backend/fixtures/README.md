@@ -8,7 +8,9 @@ cost, identical every run.**
 ```
 reference_case.md   the committed charge file
 responses/          7 real captured responses -- one per slot
-broken/             hand-damaged copies, for the failure paths
+broken/              hand-damaged copies, for the failure paths
+latency_probe.json   scripts/probe_latency.py output -- speed, not the control case
+pool_probe.json      scripts/probe_pool.py output -- which candidates qualify, not the control case
 ```
 
 ## The envelope

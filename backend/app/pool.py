@@ -1,22 +1,10 @@
 """The pool this process draws from.
 
-Resolved once at startup -- either discovered from OpenRouter's live free tier
-or pinned by hand through `MODEL_POOL` -- and read by every run afterwards.
-
-Why it is resolved once rather than per run: a run that redrew the tier
-mid-flight could seat a model in stage 2 that did not exist when stage 1 began.
-Why it is not a constant: the free tier changes without notice, and a
-hand-written list decays into a server that refuses to start.
-
-**Every run stores the pool it drew from** (`runs.pool`). That is what keeps
-criterion 15 true after this change: reconstitution needs the seed *and* the
-pool, and both are on the row. A pool that shifts under the project would
-otherwise make an old seed meaningless.
-
-The cost of a live pool, stated plainly: two runs convened a week apart may
-draw from different candidate sets, so a comparison across them carries a third
-uncontrolled variable on top of the draw itself. Compare runs from the same
-sitting, and read `runs.pool` before trusting an old pair.
+A hand-picked, static list of free models, set once at startup from
+`MODEL_POOL` and read by every run afterwards. No discovery, no live check
+against OpenRouter: if a model disappears from the free tier, the run that
+draws it fails and says which slot and model failed, same as any other
+failure.
 """
 
 from __future__ import annotations
@@ -27,20 +15,18 @@ _resolved: tuple[str, ...] = ()
 
 
 class PoolTooSmall(RuntimeError):
-    """Fewer free models than there are chairs. Loud, and at startup."""
+    """Fewer configured models than there are chairs."""
 
 
 def set_pool(models: tuple[str, ...] | list[str]) -> tuple[str, ...]:
-    """Fix the pool for this process. Refuses a bench it cannot seat."""
+    """Fix the pool for this process, in the order given."""
     global _resolved
-    unique = tuple(sorted(set(models)))
+    unique = tuple(_ordered_unique(models))
 
     if len(unique) < len(ALL_SLOTS):
         raise PoolTooSmall(
-            f"OpenRouter is offering {len(unique)} usable free models; "
-            f"{len(ALL_SLOTS)} are needed to seat the bench. "
-            "Situation B cannot draw seven distinct models from fewer than seven. "
-            "Wait for the free tier to recover, or pin MODEL_POOL deliberately."
+            f"MODEL_POOL has {len(unique)} distinct model(s); "
+            f"{len(ALL_SLOTS)} are needed to seat the bench."
         )
 
     _resolved = unique
@@ -54,6 +40,16 @@ def get_pool() -> tuple[str, ...]:
             "a test must call set_pool() itself."
         )
     return _resolved
+
+
+def _ordered_unique(models: tuple[str, ...] | list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for model in models:
+        if model not in seen:
+            seen.add(model)
+            ordered.append(model)
+    return ordered
 
 
 def clear() -> None:

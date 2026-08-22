@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/classical-49c8dd9d-68b8-470e-8166-fbcc732a7b6c/styles.css">
+<script src="_ds/classical-49c8dd9d-68b8-470e-8166-fbcc732a7b6c/_ds_bundle.js"></script>
+<style>
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--color-bg);color:var(--color-text)}
+@keyframes tb-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes tb-pulse{0%,100%{opacity:.25}50%{opacity:.9}}
+.tb-enter{animation:tb-in .5s ease-out both}
+.tb-dot{width:5px;height:5px;border-radius:50%;background:var(--color-accent);animation:tb-pulse 1.2s ease-in-out infinite}
+.tb-dot:nth-child(2){animation-delay:.18s}
+.tb-dot:nth-child(3){animation-delay:.36s}
+</style>
+</helmet>
+
+<div style="min-height:100vh">
+
+<div class="nav" style="position:sticky;top:0;z-index:20;background:var(--color-bg)">
+  <span class="nav-brand">Tribunal</span>
+  <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--font-heading);color:{{ c1 }}">1 · The charge</span>
+  <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--font-heading);color:{{ c2 }}">2 · The advocates</span>
+  <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--font-heading);color:{{ c3 }}">3 · The judges</span>
+  <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--font-heading);color:{{ c4 }}">4 · The verdict</span>
+  <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">{{ progressLabel }}</span>
+</div>
+
+<section style="padding:64px 48px 72px;border-bottom:1px solid var(--color-divider)">
+  <div style="max-width:900px;margin:0 auto">
+    <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin:0 0 14px">Instrument of deliberation</p>
+    <h1 style="font-size:54px;font-weight:400;letter-spacing:-.02em;margin:0 0 18px;max-width:15ch">A trial held entirely by machines.</h1>
+    <p style="font-size:16px;line-height:1.72;max-width:62ch;text-align:justify;hyphens:auto;margin:0 0 30px">Four advocates read the charge and never read one another — two arguing the act was <em>not justified</em>, two that it <em>was</em>. Three judges then read the four statements, and never read one another either. Each commits to a binary verdict with a confidence and at least two reasons. Seven independent calls, and nothing inferred from prose.</p>
+
+    <div class="hr" style="margin:0 0 26px"></div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:18px">
+      <h3 style="margin:0;font-size:24px">The charge file</h3>
+      <div class="seg">
+        <label class="seg-opt"><input type="radio" name="src" checked>Paste the text</label>
+        <label class="seg-opt"><input type="radio" name="src">Upload a document</label>
+      </div>
+    </div>
+
+    <textarea class="input" rows="7" style="min-height:168px;font-size:14px;line-height:1.7;margin-bottom:12px">On 3 March, during a 41-minute failure of the hospital network, R. Adeyemi, senior duty nurse, forced the emergency override on a locked controlled-substance cabinet and administered 4mg of morphine to a post-operative patient reporting severe pain. Standing policy requires a second clinician's countersignature, recorded electronically, before any controlled substance leaves the cabinet. No countersignature was obtained. Adeyemi entered a handwritten record at 21:14 and reported the override to the ward manager the following morning.</textarea>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+      <span class="tag tag-neutral" style="font-feature-settings:'tnum'">76 words extracted</span>
+      <span class="text-muted" style="font-size:12.5px">Or drop a PDF, TXT or MD here. A file that accuses nobody of anything is refused now, not at the verdict.</span>
+    </div>
+
+    <div class="hr" style="margin:0 0 24px"></div>
+
+    <h3 style="margin:0 0 6px;font-size:24px">The bench</h3>
+    <p class="text-muted" style="margin:0 0 18px;font-size:13px;max-width:62ch">Seven slots, filled either by one model seven times over or by seven distinct models. Everything else — the charge, the instructions, the order of the stages — is identical between the two.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px">
+      <label class="card" style="cursor:pointer;gap:8px;box-shadow:{{ ringIdentical }}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="radio"><input type="radio" name="bench" checked="{{ isIdentical }}" onChange="{{ pickIdentical }}"><span class="dot"></span></span>
+          <span class="card-title" style="font-size:17px">One model, seven times</span>
+        </div>
+        <p class="card-body" style="margin:0;font-size:13px">A single model drawn from the free pool sits in all seven chairs, as seven independent calls sharing no state.</p>
+      </label>
+      <label class="card" style="cursor:pointer;gap:8px;box-shadow:{{ ringDifferent }}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="radio"><input type="radio" name="bench" checked="{{ isDifferent }}" onChange="{{ pickDifferent }}"><span class="dot"></span></span>
+          <span class="card-title" style="font-size:17px">Seven different models</span>
+        </div>
+        <p class="card-body" style="margin:0;font-size:13px">Seven distinct models drawn without replacement, one per slot. The draw and its seed are recorded with the run.</p>
+      </label>
+    </div>
+
+    <div class="hr" style="margin:0 0 22px"></div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <button class="btn btn-primary" style="font-size:15px;padding:11px 22px" onClick="{{ convene }}">{{ ctaLabel }}</button>
+      <span class="text-muted" style="font-size:12.5px;max-width:52ch">Once convened the trial runs to its end without you: four statements, then three judgments, then the count.</span>
+    </div>
+  </div>
+</section>
+
+<section style="scroll-margin-top:60px">
+  <sc-if value="{{ started }}" hint-placeholder-val="{{ true }}">
+    <div class="tb-enter">
+      <div style="padding:44px 48px 24px;max-width:1320px;margin:0 auto">
+        <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin:0 0 10px">Stage one · statements</p>
+        <h2 style="margin:0 0 8px;font-size:32px;font-weight:400">The advocates speak, each alone.</h2>
+        <p class="text-muted" style="margin:0;font-size:12.5px">Four calls, no rebuttals, no advocate reading another. Each is given the charge file and nothing else — the two sides are set opposite so their claims can be read against each other.</p>
+      </div>
+
+      <div style="position:sticky;top:52px;z-index:15;background:var(--color-bg);border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-accent)">
+        <div style="max-width:1320px;margin:0 auto;padding:0 48px;display:grid;grid-template-columns:1fr 1px 1fr">
+          <div style="padding:12px 30px 12px 0;display:flex;align-items:baseline;gap:12px">
+            <h4 style="margin:0;font-size:14px;letter-spacing:.14em;text-transform:uppercase">Against</h4>
+            <span class="text-muted" style="font-size:12px">the act was not justified</span>
+            <span class="text-muted" style="margin-left:auto;font-size:11px;font-feature-settings:'tnum'">{{ againstCount }}</span>
+          </div>
+          <div style="background:var(--color-divider)"></div>
+          <div style="padding:12px 0 12px 30px;display:flex;align-items:baseline;gap:12px">
+            <h4 style="margin:0;font-size:14px;letter-spacing:.14em;text-transform:uppercase">For</h4>
+            <span class="text-muted" style="font-size:12px">the act was justified</span>
+            <span class="text-muted" style="margin-left:auto;font-size:11px;font-feature-settings:'tnum'">{{ forCount }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:1320px;margin:0 auto;padding:0 48px 20px;display:grid;grid-template-columns:1fr 1px 1fr;align-items:start">
+        <div style="grid-column:2;grid-row:1 / -1;background:var(--color-divider)"></div>
+
+        <div ref="{{ refRowA }}" style="grid-column:1;grid-row:1;padding:30px 30px 30px 0;scroll-margin-top:118px">
+          <div class="card" style="border-style:{{ vBorder }};gap:var(--space-3)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <div>
+                <div class="card-title" style="font-size:20px">Advocate Vega</div>
+                <div class="card-kicker">advocate_against_1 · against</div>
+              </div>
+              <sc-if value="{{ vLive }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">reasoning…</span></sc-if>
+              <sc-if value="{{ vDone }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="font-feature-settings:'tnum'">294 words</span></sc-if>
+            </div>
+            <sc-if value="{{ vWait }}" hint-placeholder-val="{{ false }}">
+              <p class="text-muted" style="margin:0;font-size:12.5px">Awaiting the floor.</p>
+            </sc-if>
+            <sc-if value="{{ vLive }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;padding:6px 0"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">reading the charge file</span></div>
+            </sc-if>
+            <sc-if value="{{ vDone }}" hint-placeholder-val="{{ true }}">
+              <div class="tb-enter" style="display:flex;flex-direction:column;gap:var(--space-3)">
+                <div>
+                  <div style="border-top:2px solid var(--color-accent);width:34px;margin-bottom:10px"></div>
+                  <p style="margin:0;font-family:var(--font-heading);font-size:19px;line-height:1.28">A safeguard that dissolves the moment it becomes inconvenient is not a safeguard.</p>
+                </div>
+                <div style="overflow:hidden;max-height:{{ vMax }};transition:max-height .4s ease">
+                <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1;margin:0">The countersignature rule was not written for ordinary evenings. It was written for exactly the evening described here: a night when the electronic record is unavailable, when no one can afterwards reconstruct who was present, and when a single clinician holds unsupervised access to a controlled substance.<br><br>The hospital had a paper fallback protocol for network failure. It is two pages long, it names the ward manager as the countersigning authority out of hours, and it was not followed. The accused did not face a choice between the patient's pain and the rules; she faced a choice between the rules as written for outages and a faster route she preferred. That the faster route ended well is a fact about luck, not about judgement.<br><br>Nor was the interval brief in the sense that matters. Forty-one minutes is time enough to walk to the third floor and return with a second clinician. The record shows the attending was on the premises. No attempt to reach him is documented, and the handwritten note at 21:14 was made after the fact, by the only person with an interest in how it read.<br><br>The tribunal should also weigh what it licenses. If the override is held justified here, then it is justified wherever a clinician sincerely believes the patient is suffering — which is to say, always. I say the act was not justified.</p>
+                </div>
+                <button class="btn btn-ghost" onClick="{{ vToggle }}" style="align-self:flex-start;font-size:12.5px;gap:6px">{{ vLabel }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:{{ vRot }};transition:transform .25s ease"><path d="m6 9 6 6 6-6"></path></svg></button>
+                <div class="hr" style="margin:2px 0"></div>
+                <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ vModel }}</span><span>·</span><span>12.4s</span><span>·</span><span>$0.00</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="grid-column:3;grid-row:1;padding:30px 0 30px 30px;scroll-margin-top:118px">
+          <div class="card" style="border-style:{{ oBorder }};gap:var(--space-3)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <div>
+                <div class="card-title" style="font-size:20px">Advocate Orion</div>
+                <div class="card-kicker">advocate_for_1 · for</div>
+              </div>
+              <sc-if value="{{ oLive }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">reasoning…</span></sc-if>
+              <sc-if value="{{ oDone }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="font-feature-settings:'tnum'">307 words</span></sc-if>
+            </div>
+            <sc-if value="{{ oWait }}" hint-placeholder-val="{{ false }}">
+              <p class="text-muted" style="margin:0;font-size:12.5px">Awaiting the floor.</p>
+            </sc-if>
+            <sc-if value="{{ oLive }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;padding:6px 0"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">reading the charge file</span></div>
+            </sc-if>
+            <sc-if value="{{ oDone }}" hint-placeholder-val="{{ true }}">
+              <div class="tb-enter" style="display:flex;flex-direction:column;gap:var(--space-3)">
+                <div>
+                  <div style="border-top:2px solid var(--color-accent);width:34px;margin-bottom:10px"></div>
+                  <p style="margin:0;font-family:var(--font-heading);font-size:19px;line-height:1.28">A rule that cannot be obeyed does not bind.</p>
+                </div>
+                <div style="overflow:hidden;max-height:{{ oMax }};transition:max-height .4s ease">
+                <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1;margin:0">On the evening in question the countersignature required by policy was an electronic one, and the electronic record was down. The accused was not choosing between compliance and speed; she was standing in front of a locked cabinet holding a control that the institution itself had rendered unavailable, beside a patient in severe pain hours out of surgery.<br><br>What she did next is the whole of the case, and it is entirely to her credit. She used the override that the cabinet manufacturer provides for precisely this circumstance — an act which is logged, mechanically, in the cabinet's own memory, and which she could not have concealed had she wished to. She gave a standard dose of a standard drug. She wrote the administration down within minutes, in ink, with the time. She reported herself the following morning, to the person with the authority to discipline her.<br><br>Set against that is a countersignature that would have recorded nothing the cabinet did not already record. The safeguard's purpose is traceability, and traceability was preserved. My colleagues opposite ask what this licenses; the answer is narrow. It licenses a clinician, during a documented failure of the institution's own systems, to relieve severe pain with a logged and self-reported override. That is not the erosion of a control. It is the control working through its manual channel, which is the reason a manual channel exists.<br><br>The duty of care is not suspended when the network is. The act was justified.</p>
+                </div>
+                <button class="btn btn-ghost" onClick="{{ oToggle }}" style="align-self:flex-start;font-size:12.5px;gap:6px">{{ oLabel }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:{{ oRot }};transition:transform .25s ease"><path d="m6 9 6 6 6-6"></path></svg></button>
+                <div class="hr" style="margin:2px 0"></div>
+                <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ oModel }}</span><span>·</span><span>14.1s</span><span>·</span><span>$0.00</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div ref="{{ refRowB }}" style="grid-column:1;grid-row:2;padding:0 30px 40px 0;scroll-margin-top:118px">
+          <div class="card" style="border-style:{{ lBorder }};gap:var(--space-3)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <div>
+                <div class="card-title" style="font-size:20px">Advocate Lyra</div>
+                <div class="card-kicker">advocate_against_2 · against</div>
+              </div>
+              <sc-if value="{{ lLive }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">reasoning…</span></sc-if>
+              <sc-if value="{{ lDone }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="font-feature-settings:'tnum'">281 words</span></sc-if>
+            </div>
+            <sc-if value="{{ lWait }}" hint-placeholder-val="{{ false }}">
+              <p class="text-muted" style="margin:0;font-size:12.5px">Awaiting the floor.</p>
+            </sc-if>
+            <sc-if value="{{ lLive }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;padding:6px 0"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">reading the charge file</span></div>
+            </sc-if>
+            <sc-if value="{{ lDone }}" hint-placeholder-val="{{ true }}">
+              <div class="tb-enter" style="display:flex;flex-direction:column;gap:var(--space-3)">
+                <div>
+                  <div style="border-top:2px solid var(--color-accent);width:34px;margin-bottom:10px"></div>
+                  <p style="margin:0;font-family:var(--font-heading);font-size:19px;line-height:1.28">Justification is not a feeling; it is a set of facts a second person can check.</p>
+                </div>
+                <div style="overflow:hidden;max-height:{{ lMax }};transition:max-height .4s ease">
+                <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1;margin:0">I will not argue that the accused was indifferent to her patient. I will argue that the charge file does not contain what would be needed to justify her, and that the absence is her doing.<br><br>Consider what is missing. There is no pain score recorded before the override, and none after. There is no note of an attempt to telephone the attending, though the switchboard log would have shown one. There is no second clinician named, no time at which one was sought, no refusal recorded. The only evidence that the situation was urgent is the account of the person who decided it was — written the next morning, to a manager, in the knowledge that a rule had been broken.<br><br>Where a clinician bypasses the one control designed to make her account checkable, she cannot then rely on her own account as the ground of her defence. This is not a technicality. It is the difference between a professional judgement and an assertion.<br><br>There is a further cost. Every override of this kind that passes unchallenged makes the next one easier and less documented. The ward's medication controls are not a monument to bureaucracy; they are the reason a missing ampoule can be traced to a person rather than to a night. On the record before this tribunal, the act was not justified.</p>
+                </div>
+                <button class="btn btn-ghost" onClick="{{ lToggle }}" style="align-self:flex-start;font-size:12.5px;gap:6px">{{ lLabel }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:{{ lRot }};transition:transform .25s ease"><path d="m6 9 6 6 6-6"></path></svg></button>
+                <div class="hr" style="margin:2px 0"></div>
+                <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ lModel }}</span><span>·</span><span>9.8s</span><span>·</span><span>$0.00</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="grid-column:3;grid-row:2;padding:0 0 40px 30px;scroll-margin-top:118px">
+          <div class="card" style="border-style:{{ dBorder }};gap:var(--space-3)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <div>
+                <div class="card-title" style="font-size:20px">Advocate Draco</div>
+                <div class="card-kicker">advocate_for_2 · for</div>
+              </div>
+              <sc-if value="{{ dLive }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">reasoning…</span></sc-if>
+              <sc-if value="{{ dDone }}" hint-placeholder-val="{{ true }}"><span class="tag tag-neutral" style="font-feature-settings:'tnum'">263 words</span></sc-if>
+            </div>
+            <sc-if value="{{ dWait }}" hint-placeholder-val="{{ false }}">
+              <p class="text-muted" style="margin:0;font-size:12.5px">Awaiting the floor.</p>
+            </sc-if>
+            <sc-if value="{{ dLive }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;padding:6px 0"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">reading the charge file</span></div>
+            </sc-if>
+            <sc-if value="{{ dDone }}" hint-placeholder-val="{{ true }}">
+              <div class="tb-enter" style="display:flex;flex-direction:column;gap:var(--space-3)">
+                <div>
+                  <div style="border-top:2px solid var(--color-accent);width:34px;margin-bottom:10px"></div>
+                  <p style="margin:0;font-family:var(--font-heading);font-size:19px;line-height:1.28">A silence in a policy is not a prohibition.</p>
+                </div>
+                <div style="overflow:hidden;max-height:{{ dMax }};transition:max-height .4s ease">
+                <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1;margin:0">The charge describes a failure of the institution before it describes an act of the accused. Forty-one minutes without a record is not a condition a ward nurse creates; it is a condition a ward nurse is left standing in. Policy is silent on what a single clinician should do when the countersigning system it depends upon has stopped answering.<br><br>The paper fallback my colleagues rely on names an authority to be reached. It does not say that a patient waits until that authority is found, and it does not say that pain is a lower priority than a signature. Read as they read it, the protocol would require a clinician to leave a post-operative patient in severe pain in order to satisfy a form — which no reading of a duty of care supports.<br><br>Weigh also what was risked and what was recoverable. A single standard dose, mechanically logged, immediately written down, voluntarily reported. Had the judgement been wrong, it was discoverable within hours by anyone who looked. That is the definition of an accountable act.<br><br>The tribunal is not asked whether the ward's controls are good. It is asked whether this person, on this night, in these conditions, acted defensibly. She did, and she left the evidence by which we are able to ask. The act was justified.</p>
+                </div>
+                <button class="btn btn-ghost" onClick="{{ dToggle }}" style="align-self:flex-start;font-size:12.5px;gap:6px">{{ dLabel }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:{{ dRot }};transition:transform .25s ease"><path d="m6 9 6 6 6-6"></path></svg></button>
+                <div class="hr" style="margin:2px 0"></div>
+                <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ dModel }}</span><span>·</span><span>11.6s</span><span>·</span><span>$0.00</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</section>
+
+<section ref="{{ refJudges }}" style="scroll-margin-top:60px">
+  <sc-if value="{{ judgesOpen }}" hint-placeholder-val="{{ true }}">
+    <div class="tb-enter" style="border-top:1px solid var(--color-divider)">
+      <div style="padding:44px 48px 22px;border-bottom:1px solid var(--color-divider);max-width:1320px;margin:0 auto">
+        <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin:0 0 10px">Stage two · judgment</p>
+        <h2 style="margin:0 0 8px;font-size:32px;font-weight:400">The judges read the four statements.</h2>
+        <p class="text-muted" style="margin:0;font-size:12.5px">The same transcript to each, carrying personas and no model names. No judge learns another judge exists.</p>
+      </div>
+
+      <div style="max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr">
+        <div ref="{{ refJ1 }}" style="padding:28px 30px 34px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:70px">
+          <div class="card-kicker">judge_1</div>
+          <h3 style="margin:0;font-size:23px;font-weight:400">Judge Meridian</h3>
+          <sc-if value="{{ j1Wait }}" hint-placeholder-val="{{ false }}">
+            <p class="text-muted" style="margin:0;font-size:12.5px">Sealed until every statement exists.</p>
+          </sc-if>
+          <sc-if value="{{ j1Live }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:6px"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">weighing the statements</span></div>
+          </sc-if>
+          <sc-if value="{{ j1Done }}" hint-placeholder-val="{{ true }}">
+            <div class="tb-enter" style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span class="tag tag-outline" style="font-size:12px;padding:4px 12px">justified</span>
+                <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.78</span>
+              </div>
+              <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 22% 0 0;background:var(--color-accent)"></div></div>
+              <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7">
+                <li style="margin-bottom:10px">The countersignature the policy demands was electronic, and the institution's own outage made it unobtainable. A control the institution has disabled cannot be the ground of the accused's fault.</li>
+                <li style="margin-bottom:10px">Traceability, which is the purpose of that control, was preserved: the cabinet logged the override mechanically, and the handwritten entry and self-report add to that record rather than replace it.</li>
+                <li>The dose was ordinary and the indication was severe pain hours after surgery. Nothing in the transcript alleges clinical excess.</li>
+              </ol>
+              <div class="hr" style="margin:6px 0 0"></div>
+              <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ j1Model }}</span><span>·</span><span>21.6s</span><span>·</span><span>$0.00</span></div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="background:var(--color-divider)"></div>
+
+        <div ref="{{ refJ2 }}" style="padding:28px 30px 34px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:70px">
+          <div class="card-kicker">judge_2</div>
+          <h3 style="margin:0;font-size:23px;font-weight:400">Judge Zenith</h3>
+          <sc-if value="{{ j2Wait }}" hint-placeholder-val="{{ false }}">
+            <p class="text-muted" style="margin:0;font-size:12.5px">Sealed until every statement exists.</p>
+          </sc-if>
+          <sc-if value="{{ j2Live }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:6px"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">weighing the statements</span></div>
+          </sc-if>
+          <sc-if value="{{ j2Done }}" hint-placeholder-val="{{ true }}">
+            <div class="tb-enter" style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span class="tag tag-outline" style="font-size:12px;padding:4px 12px">justified</span>
+                <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.61</span>
+              </div>
+              <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 39% 0 0;background:var(--color-accent)"></div></div>
+              <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7">
+                <li style="margin-bottom:10px">The paper fallback raised against the accused names an authority to be reached, not a period during which the patient must wait. Its existence weakens her case but does not defeat it.</li>
+                <li style="margin-bottom:10px">Her conduct after the act — an immediate written entry and a voluntary report to the person able to discipline her — is inconsistent with an intent to evade the control.</li>
+                <li>I hold the act justified with reservation. Had the attending's presence been shown to be known to her at the time, I would have decided otherwise.</li>
+              </ol>
+              <div class="hr" style="margin:6px 0 0"></div>
+              <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ j2Model }}</span><span>·</span><span>18.3s</span><span>·</span><span>$0.00</span></div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="background:var(--color-divider)"></div>
+
+        <div ref="{{ refJ3 }}" style="padding:28px 30px 34px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:70px">
+          <div class="card-kicker">judge_3</div>
+          <h3 style="margin:0;font-size:23px;font-weight:400">Judge Solstice</h3>
+          <sc-if value="{{ j3Wait }}" hint-placeholder-val="{{ false }}">
+            <p class="text-muted" style="margin:0;font-size:12.5px">Sealed until every statement exists.</p>
+          </sc-if>
+          <sc-if value="{{ j3Live }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:6px"><span class="tb-dot"></span><span class="tb-dot"></span><span class="tb-dot"></span><span class="text-muted" style="font-size:12px;margin-left:6px">weighing the statements</span></div>
+          </sc-if>
+          <sc-if value="{{ j3Done }}" hint-placeholder-val="{{ true }}">
+            <div class="tb-enter" style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span class="tag tag-neutral" style="font-size:12px;padding:4px 12px;border:1px solid var(--color-neutral-400)">not justified</span>
+                <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.71</span>
+              </div>
+              <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 29% 0 0;background:var(--color-neutral-700)"></div></div>
+              <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7">
+                <li style="margin-bottom:10px">A written fallback for network failure existed and was not attempted. The impossibility argued for justification is an impossibility only if that document is ignored.</li>
+                <li style="margin-bottom:10px">Forty-one minutes, with an attending clinician on the premises, is not an interval in which no second signature could be obtained. The transcript contains no attempt to obtain one.</li>
+                <li>The urgency relied upon appears only in the accused's own later account. Where the control that would have made that account checkable was bypassed, I cannot treat it as sufficient.</li>
+              </ol>
+              <div class="hr" style="margin:6px 0 0"></div>
+              <div class="card-meta" style="font-feature-settings:'tnum'"><span>{{ j3Model }}</span><span>·</span><span>16.9s</span><span>·</span><span>$0.00</span></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</section>
+
+<section ref="{{ refVerdict }}" style="scroll-margin-top:60px">
+  <sc-if value="{{ verdictOpen }}" hint-placeholder-val="{{ true }}">
+    <div class="tb-enter" style="border-top:1px solid var(--color-divider);padding:72px 48px 84px;background:var(--color-surface)">
+      <div style="max-width:940px;margin:0 auto;text-align:center">
+        <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 26px">The tribunal, having heard four advocates and three judges, finds</p>
+
+        <div style="border-top:2px solid var(--color-accent);border-bottom:2px solid var(--color-accent);padding:34px 24px 30px;margin:0 0 30px">
+          <p style="font-family:var(--font-heading);font-size:96px;line-height:1;font-weight:400;letter-spacing:-.03em;text-transform:uppercase;margin:0 0 14px">Justified</p>
+          <p style="font-family:var(--font-heading);font-size:22px;font-weight:400;margin:0 auto;max-width:38ch">The accused's act is held defensible. She is not in the wrong.</p>
+        </div>
+
+        <p style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--font-heading);margin:0 0 20px;font-feature-settings:'tnum'">Carried 2 <span style="color:var(--color-neutral-500)">to</span> 1</p>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);margin:0 0 26px">
+          <div style="padding:18px 16px;border-right:1px solid var(--color-divider)">
+            <div style="border-top:3px solid var(--color-accent);width:52px;margin:0 auto 12px"></div>
+            <p style="margin:0 0 4px;font-family:var(--font-heading);font-size:17px">Judge Meridian</p>
+            <p class="text-muted" style="margin:0;font-size:12px;font-feature-settings:'tnum'">justified · 0.78</p>
+          </div>
+          <div style="padding:18px 16px;border-right:1px solid var(--color-divider)">
+            <div style="border-top:3px solid var(--color-accent);width:52px;margin:0 auto 12px"></div>
+            <p style="margin:0 0 4px;font-family:var(--font-heading);font-size:17px">Judge Zenith</p>
+            <p class="text-muted" style="margin:0;font-size:12px;font-feature-settings:'tnum'">justified · 0.61</p>
+          </div>
+          <div style="padding:18px 16px">
+            <div style="border-top:3px solid var(--color-neutral-400);width:52px;margin:0 auto 12px"></div>
+            <p style="margin:0 0 4px;font-family:var(--font-heading);font-size:17px">Judge Solstice</p>
+            <p class="text-muted" style="margin:0;font-size:12px;font-feature-settings:'tnum'">not justified · 0.71</p>
+          </div>
+        </div>
+
+        <p class="text-muted" style="margin:0 auto 30px;font-size:12.5px;max-width:60ch">Counted from three judgment rows; the line above is derived at read time and stored nowhere. One run of one bench is not evidence about models — it is evidence about this run.</p>
+
+        <div style="display:flex;justify-content:center;align-items:center;gap:26px;flex-wrap:wrap;font-feature-settings:'tnum';margin-bottom:28px">
+          <span class="text-muted" style="font-size:12px">7 calls · 4 statements, 3 judgments</span>
+          <span class="text-muted" style="font-size:12px">wall clock 41.2s</span>
+          <span class="text-muted" style="font-size:12px">1,145 words argued</span>
+          <span class="text-muted" style="font-size:12px">cost $0.00</span>
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px">
+          <button class="btn btn-secondary" onClick="{{ reset }}">Convene on a new charge</button>
+          <button class="btn btn-primary" onClick="{{ replay }}">Run it again on this one</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;pace&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Deliberate&quot;,&quot;Normal&quot;,&quot;Brisk&quot;],&quot;default&quot;:&quot;Normal&quot;,&quot;tsType&quot;:&quot;'Deliberate' | 'Normal' | 'Brisk'&quot;,&quot;section&quot;:&quot;Run&quot;},&quot;autoScroll&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Run&quot;}}">
+const SPEEDS = { Deliberate: 3200, Normal: 2000, Brisk: 1100 };
+const ORDER = ['v', 'o', 'l', 'd', 'j1', 'j2', 'j3'];
+const MODELS = {
+  v: 'meta-llama/llama-3.3-70b-instruct:free',
+  l: 'qwen/qwen-2.5-72b-instruct:free',
+  o: 'google/gemma-2-27b-it:free',
+  d: 'mistralai/mistral-small-3.1:free',
+  j1: 'deepseek/deepseek-r1:free',
+  j2: 'nousresearch/hermes-3-llama-3.1-405b:free',
+  j3: 'microsoft/phi-4:free'
+};
+const SINGLE = 'deepseek/deepseek-r1:free';
+
+class Component extends DCLogic {
+  state = { mode: 'identical', started: false, done: 0, active: -1, open: {} };
+
+  toggle(k) {
+    this.setState(s => ({ open: Object.assign({}, s.open, { [k]: !s.open[k] }) }));
+  }
+
+  componentWillUnmount() { clearTimeout(this.timer); }
+
+  step() {
+    const ms = SPEEDS[this.props.pace] ?? SPEEDS.Normal;
+    this.timer = setTimeout(() => {
+      const done = this.state.done + 1;
+      this.setState({ done, active: done < 7 ? done : -1 });
+      if (done === 2) this.scrollTo('rowB');
+      else if (done === 4) this.scrollTo('judges');
+      else if (done === 5) this.scrollTo('j1');
+      else if (done === 6) this.scrollTo('j2');
+      else if (done === 7) { this.scrollTo('j3'); this.timer = setTimeout(() => this.scrollTo('verdict'), 1400); return; }
+      this.step();
+    }, ms);
+  }
+
+  scrollTo(key) {
+    if (this.props.autoScroll === false) return;
+    requestAnimationFrame(() => {
+      const el = this.nodes && this.nodes[key];
+      if (!el) return;
+      const pad = key === 'rowA' || key === 'rowB' ? 118 : key[0] === 'j' ? 62 : 56;
+      let p = el.parentElement, box = null;
+      while (p) {
+        const oy = getComputedStyle(p).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 4) { box = p; break; }
+        p = p.parentElement;
+      }
+      const top = el.getBoundingClientRect().top;
+      if (box) box.scrollTo({ top: box.scrollTop + top - box.getBoundingClientRect().top - pad, behavior: 'smooth' });
+      else window.scrollTo({ top: window.scrollY + top - pad, behavior: 'smooth' });
+    });
+  }
+
+  convene = () => {
+    clearTimeout(this.timer);
+    this.setState({ started: true, done: 0, active: 0 }, () => this.scrollTo('rowA'));
+    this.step();
+  };
+
+  reset = () => {
+    clearTimeout(this.timer);
+    this.setState({ started: false, done: 0, active: -1 });
+    if (this.props.autoScroll !== false) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  keep(key, el) {
+    if (!this.nodes) this.nodes = {};
+    if (el) this.nodes[key] = el;
+  }
+
+  renderVals() {
+    const { mode, started, done, active, open } = this.state;
+    const vals = {
+      started,
+      judgesOpen: done >= 4,
+      verdictOpen: done >= 7,
+      isIdentical: mode === 'identical',
+      isDifferent: mode === 'different',
+      ringIdentical: mode === 'identical' ? 'inset 0 0 0 1px var(--color-accent)' : 'none',
+      ringDifferent: mode === 'different' ? 'inset 0 0 0 1px var(--color-accent)' : 'none',
+      pickIdentical: () => this.setState({ mode: 'identical' }),
+      pickDifferent: () => this.setState({ mode: 'different' }),
+      convene: this.convene,
+      replay: this.convene,
+      reset: this.reset,
+      ctaLabel: started ? 'Convene again' : 'Convene the tribunal',
+      progressLabel: started ? done + ' of 7 calls returned' : 'idle · 7 slots waiting',
+      againstCount: done >= 3 ? '2 of 2 in' : done >= 1 ? '1 of 2 in' : '0 of 2 in',
+      forCount: done >= 4 ? '2 of 2 in' : done >= 2 ? '1 of 2 in' : '0 of 2 in',
+      c1: !started ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+      c2: started && done < 4 ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+      c3: done >= 4 && done < 7 ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+      c4: done >= 7 ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+      refRowA: el => this.keep('rowA', el),
+      refRowB: el => this.keep('rowB', el),
+      refJ1: el => this.keep('j1', el),
+      refJ2: el => this.keep('j2', el),
+      refJ3: el => this.keep('j3', el),
+      refJudges: el => this.keep('judges', el),
+      refVerdict: el => this.keep('verdict', el)
+    };
+    ORDER.forEach((k, i) => {
+      vals[k + 'Live'] = active === i;
+      vals[k + 'Done'] = done > i;
+      vals[k + 'Wait'] = !started || (done <= i && active !== i);
+      vals[k + 'Border'] = active === i ? 'dashed' : 'solid';
+      vals[k + 'Model'] = mode === 'identical' ? SINGLE : MODELS[k];
+      if (i < 4) {
+        const on = !!open[k];
+        vals[k + 'Max'] = on ? '2400px' : '152px';
+        vals[k + 'Label'] = on ? 'Fold the statement' : 'Read the full statement';
+        vals[k + 'Rot'] = on ? 'rotate(180deg)' : 'none';
+        vals[k + 'Toggle'] = () => this.toggle(k);
+      }
+    });
+    return vals;
+  }
+}
+
+</script>
+</body>
+</html>

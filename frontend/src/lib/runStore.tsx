@@ -11,20 +11,23 @@ import {
 import { convene, fetchRun, subscribeToRun } from '../api'
 import type { Run, Situation } from '../types'
 
-// The active run, held for the whole session so the courtroom and the judgment
-// read the same rows. One run at a time: convening a second replaces the first.
+// The active run, held only in memory for the life of the tab. One run at a
+// time: convening a second replaces the first, and a reload starts over with
+// no run at all — nothing is kept across a refresh.
 //
 // The stream is an optimisation over the record, not the record itself — each
 // event carries the whole run, and a dropped connection is repaired by
 // refetching, never by patching what the UI happens to be holding.
-
-const RUN_ID_KEY = 'tribunal.activeRunId'
 
 interface RunStore {
   run: Run | null
   error: string | null
   /** Convenes the tribunal and follows it to its end. No further input is taken. */
   start: (caseId: number, situation: Situation) => Promise<Run>
+  /** Drops the run and its stream, back to no run at all — the failed-run
+   *  escape hatch. The stored case is untouched; only the client's memory of
+   *  having convened is cleared. */
+  reset: () => void
 }
 
 const RunContext = createContext<RunStore | null>(null)
@@ -52,25 +55,11 @@ export function RunProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  // Reconnect after a reload: the run id is the only thing kept client-side.
-  useEffect(() => {
-    const stored = sessionStorage.getItem(RUN_ID_KEY)
-    if (!stored) return
-    const runId = Number(stored)
-    void fetchRun(runId)
-      .then((existing) => {
-        setRun(existing)
-        if (existing.status === 'running') follow(runId)
-      })
-      .catch(() => sessionStorage.removeItem(RUN_ID_KEY))
-  }, [follow])
-
   useEffect(() => () => unsubscribe.current?.(), [])
 
   const start = useCallback(
     async (caseId: number, situation: Situation) => {
       const started = await convene(caseId, situation)
-      sessionStorage.setItem(RUN_ID_KEY, String(started.id))
       setRun(started)
       setError(null)
       follow(started.id)
@@ -79,7 +68,17 @@ export function RunProvider({ children }: { children: ReactNode }) {
     [follow],
   )
 
-  const value = useMemo<RunStore>(() => ({ run, error, start }), [run, error, start])
+  const reset = useCallback(() => {
+    unsubscribe.current?.()
+    unsubscribe.current = null
+    setRun(null)
+    setError(null)
+  }, [])
+
+  const value = useMemo<RunStore>(
+    () => ({ run, error, start, reset }),
+    [run, error, start, reset],
+  )
   return <RunContext.Provider value={value}>{children}</RunContext.Provider>
 }
 

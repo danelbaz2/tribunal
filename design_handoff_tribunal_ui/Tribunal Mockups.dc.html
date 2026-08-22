@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/classical-49c8dd9d-68b8-470e-8166-fbcc732a7b6c/styles.css">
+<script src="_ds/classical-49c8dd9d-68b8-470e-8166-fbcc732a7b6c/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:#e6e4e1;font-family:var(--font-body)}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#201f1d;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#201f1d}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#201f1d;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{background:var(--color-bg);border:1px solid rgba(0,0,0,.1);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}
+.dv-opt:target .dv-oid{background:#b68235;color:#fff}
+.dv-next{margin:26px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+.slot-rule{border-top:2px solid var(--color-accent);width:26px}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Tribunal — the three screens of a run</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a" data-screen-label="01 New trial">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Screen 1 — New trial: the charge enters as text or as a file</div>
+<div class="dv-card" style="width:1080px">
+  <div class="nav">
+    <span class="nav-brand">Tribunal</span>
+    <a href="#1a" aria-current="page">New trial</a>
+    <a href="#1b">Courtroom</a>
+    <a href="#1c">Judgment</a>
+    <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">7 slots · 4 advocates · 3 judges</span>
+  </div>
+
+  <div style="padding:44px 68px 56px;max-width:920px;margin:0 auto">
+    <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin:0 0 14px;font-feature-settings:'tnum'">Instrument of deliberation</p>
+    <h1 style="font-size:52px;font-weight:400;letter-spacing:-.02em;margin:0 0 18px;max-width:15ch">A trial held entirely by machines.</h1>
+    <p style="font-size:16px;line-height:1.72;max-width:62ch;text-align:justify;hyphens:auto;margin:0 0 8px">One charge file is read by four advocates who never see one another — two arguing the act was <em>not justified</em>, two arguing it <em>was</em>. Their four statements are then read by three judges who never see one another either. Each judge commits to a binary verdict, states a confidence, and gives at least two reasons. Seven independent calls; nothing inferred from prose.</p>
+    <p style="font-size:16px;line-height:1.72;max-width:62ch;text-align:justify;margin:0">Nothing about this particular case lives in the system. Replace the charge file and the tribunal sits again, unchanged.</p>
+
+    <hr class="hr" style="margin:36px 0 30px">
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:20px">
+      <h3 style="margin:0;font-size:24px">The charge file</h3>
+      <div class="seg">
+        <label class="seg-opt"><input type="radio" name="src" checked>Paste the text</label>
+        <label class="seg-opt"><input type="radio" name="src">Upload a document</label>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:10px">
+      <label for="charge-body">The accusation, in full</label>
+      <textarea class="input" id="charge-body" rows="7" style="min-height:172px;font-size:14px;line-height:1.7">On 3 March, during a 41-minute failure of the hospital network, R. Adeyemi, senior duty nurse, forced the emergency override on a locked controlled-substance cabinet and administered 4mg of morphine to a post-operative patient reporting severe pain. Standing policy requires a second clinician's countersignature, recorded electronically, before any controlled substance leaves the cabinet. No countersignature was obtained. Adeyemi entered a handwritten record at 21:14 and reported the override to the ward manager the following morning.</textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
+      <span class="tag tag-neutral" style="font-feature-settings:'tnum'">76 words extracted</span>
+      <span class="text-muted" style="font-size:12px">A file that accuses nobody of anything is rejected here, not at the verdict.</span>
+    </div>
+
+    <div style="display:flex;gap:18px;align-items:stretch;margin-bottom:30px">
+      <div style="flex:1;border:1px dashed var(--color-divider);border-radius:var(--radius-md);padding:22px 24px;display:flex;flex-direction:column;gap:8px;justify-content:center">
+        <p style="margin:0;font-family:var(--font-heading);font-size:16px">Or drop a document here</p>
+        <p class="text-muted" style="margin:0;font-size:12.5px">PDF, TXT or MD. Scanned pages are checked for extractable text and refused if there is none.</p>
+      </div>
+      <div style="flex:1;border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <span style="font-family:var(--font-heading);font-size:15px">adeyemi-incident-report.pdf</span>
+          <span class="tag tag-outline">attached</span>
+        </div>
+        <div class="hr" style="margin:0"></div>
+        <p class="text-muted" style="margin:0;font-size:12px;font-feature-settings:'tnum'">4 pages · 1,842 words extracted · text layer present</p>
+        <p class="text-muted" style="margin:0;font-size:12px">Once a run exists this case is sealed. A correction is a new case, never an edit.</p>
+      </div>
+    </div>
+
+    <div class="hr" style="margin:0 0 26px"></div>
+
+    <h3 style="margin:0 0 6px;font-size:24px">The bench</h3>
+    <p class="text-muted" style="margin:0 0 18px;font-size:13px;max-width:60ch">Seven slots are filled either by one model seven times over, or by seven distinct models. Everything else — the charge, the instructions, the order of the stages — is identical between the two.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:30px">
+      <label class="card" style="cursor:pointer;box-shadow:inset 0 0 0 1px var(--color-accent);gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="radio"><input type="radio" name="situation" checked><span class="dot"></span></span>
+          <span class="card-title" style="font-size:17px">One model, seven times</span>
+        </div>
+        <p class="card-body" style="margin:0;font-size:13px">A single model drawn from the free pool sits in all seven chairs, as seven independent calls sharing no state.</p>
+      </label>
+      <label class="card" style="cursor:pointer;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="radio"><input type="radio" name="situation"><span class="dot"></span></span>
+          <span class="card-title" style="font-size:17px">Seven different models</span>
+        </div>
+        <p class="card-body" style="margin:0;font-size:13px">Seven distinct models drawn without replacement, one per slot. The draw and its seed are recorded with the run.</p>
+      </label>
+    </div>
+
+    <div class="hr" style="margin:0 0 22px"></div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <button class="btn btn-primary" style="font-size:15px;padding:11px 22px">Convene the tribunal</button>
+      <span class="text-muted" style="font-size:12.5px;max-width:52ch">Once convened the trial runs to its end without you: four statements, then three judgments, then the count. All seven calls must succeed or the run is marked failed.</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b" data-screen-label="02 Courtroom">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Screen 2 — The courtroom: two against, two for, statements arriving live</div>
+<div class="dv-card" style="width:1180px">
+  <div class="nav">
+    <span class="nav-brand">Tribunal</span>
+    <a href="#1a">New trial</a>
+    <a href="#1b" aria-current="page">Courtroom</a>
+    <a href="#1c">Judgment</a>
+    <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">Run 24 · stage 1 of 2 · 3 of 4 statements in</span>
+  </div>
+
+  <div style="padding:32px 44px 20px;border-bottom:1px solid var(--color-divider)">
+    <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin:0 0 10px">Case in hearing</p>
+    <h2 style="margin:0 0 10px;font-size:30px;font-weight:400">Adeyemi — controlled-substance override, St. Alder's Ward 4</h2>
+    <p class="text-muted" style="margin:0;font-size:12.5px;font-feature-settings:'tnum'">The four advocates argue in parallel and in isolation. No rebuttals. No advocate reads another.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:0">
+    <div style="padding:26px 32px 34px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <div class="slot-rule"></div>
+        <h4 style="margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase">Against — not justified</h4>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <div>
+            <div class="card-title" style="font-size:19px">Advocate Vega</div>
+            <div class="card-kicker">advocate_against_1</div>
+          </div>
+          <span class="tag tag-neutral" style="font-feature-settings:'tnum'">294 words</span>
+        </div>
+        <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1">The countersignature rule was not written for ordinary evenings. It was written for exactly the evening described here: a night when the electronic record is unavailable, when no one can afterwards reconstruct who was present, and when a single clinician holds unsupervised access to a controlled substance. A safeguard that dissolves the moment it becomes inconvenient is not a safeguard.<br><br>The hospital had a paper fallback protocol for network failure. It is two pages long, it names the ward manager as the countersigning authority out of hours, and it was not followed. The accused did not face a choice between the patient's pain and the rules; she faced a choice between the rules as written for outages and a faster route she preferred. That the faster route ended well is a fact about luck, not about judgement.<br><br>Nor was the interval brief in the sense that matters. Forty-one minutes is time enough to walk to the third floor and return with a second clinician. The record shows the attending was on the premises. No attempt to reach him is documented, and the handwritten note at 21:14 was made after the fact, by the only person with an interest in how it read.<br><br>The tribunal should also weigh what it licenses. If the override is held justified here, on this record, then it is justified wherever a clinician sincerely believes the patient is suffering — which is to say, always. The rule would survive only in cases where nobody wanted to break it. I say the act was not justified.</p>
+        <div class="hr" style="margin:2px 0"></div>
+        <div class="card-meta" style="font-feature-settings:'tnum'">
+          <span>meta-llama/llama-3.3-70b-instruct:free</span><span>·</span><span>12.4s</span><span>·</span><span>$0.00</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <div>
+            <div class="card-title" style="font-size:19px">Advocate Lyra</div>
+            <div class="card-kicker">advocate_against_2</div>
+          </div>
+          <span class="tag tag-neutral" style="font-feature-settings:'tnum'">281 words</span>
+        </div>
+        <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1">I will not argue that the accused was indifferent to her patient. I will argue that the charge file does not contain what would be needed to justify her, and that the absence is her doing.<br><br>Consider what is missing. There is no pain score recorded before the override, and none after. There is no note of an attempt to telephone the attending, though the switchboard log would have shown one. There is no second clinician named, no time at which one was sought, no refusal recorded. The only evidence that the situation was urgent is the account of the person who decided it was — written the next morning, to a manager, in the knowledge that a rule had been broken.<br><br>Justification is not a feeling; it is a set of facts that a second person can check. Where a clinician bypasses the one control designed to make her account checkable, she cannot then rely on her own account as the ground of her defence. This is not a technicality. It is the difference between a professional judgement and an assertion.<br><br>There is a further cost. Every override of this kind that passes unchallenged makes the next one easier and less documented. The ward's medication controls are not a monument to bureaucracy; they are the reason that a missing ampoule can be traced to a person rather than to a night. On the record before this tribunal, the act was not justified.</p>
+        <div class="hr" style="margin:2px 0"></div>
+        <div class="card-meta" style="font-feature-settings:'tnum'">
+          <span>qwen/qwen-2.5-72b-instruct:free</span><span>·</span><span>9.8s</span><span>·</span><span>$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--color-divider)"></div>
+
+    <div style="padding:26px 32px 34px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <div class="slot-rule"></div>
+        <h4 style="margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase">For — justified</h4>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <div>
+            <div class="card-title" style="font-size:19px">Advocate Orion</div>
+            <div class="card-kicker">advocate_for_1</div>
+          </div>
+          <span class="tag tag-neutral" style="font-feature-settings:'tnum'">307 words</span>
+        </div>
+        <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1">A rule that cannot be obeyed does not bind. On the evening in question the countersignature required by policy was an electronic one, and the electronic record was down. The accused was not choosing between compliance and speed; she was standing in front of a locked cabinet holding a control that the institution itself had rendered unavailable, beside a patient in severe pain hours out of surgery.<br><br>What she did next is the whole of the case, and it is entirely to her credit. She used the override that the cabinet manufacturer provides for precisely this circumstance — an act which is logged, mechanically, in the cabinet's own memory, and which she could not have concealed had she wished to. She gave a standard dose of a standard drug, not an unusual one. She wrote the administration down within minutes, in ink, with the time. She reported herself the following morning, to the person with the authority to discipline her. Every one of these is the behaviour of a clinician who expected to be examined and intended to be.<br><br>Set against that is a countersignature that would have recorded nothing the cabinet did not already record. The safeguard's purpose is traceability, and traceability was preserved. My colleagues opposite ask what this licenses; the answer is narrow and easily stated. It licenses a clinician, during a documented failure of the institution's own systems, to relieve severe pain with a logged and self-reported override. That is not the erosion of a control. It is the control working through its manual channel, which is the reason a manual channel exists.<br><br>The duty of care is not suspended when the network is. The act was justified.</p>
+        <div class="hr" style="margin:2px 0"></div>
+        <div class="card-meta" style="font-feature-settings:'tnum'">
+          <span>google/gemma-2-27b-it:free</span><span>·</span><span>14.1s</span><span>·</span><span>$0.00</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-style:dashed">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <div>
+            <div class="card-title" style="font-size:19px">Advocate Draco</div>
+            <div class="card-kicker">advocate_for_2</div>
+          </div>
+          <span class="tag tag-outline">writing…</span>
+        </div>
+        <p class="card-body" style="font-size:13.5px;line-height:1.75;text-align:justify;hyphens:auto;opacity:1">The charge describes a failure of the institution before it describes an act of the accused. Forty-one minutes without a record is not a condition a ward nurse creates; it is a condition a ward nurse is left standing in. Policy is silent on what a single clinician should do when the countersigning system it depends on has<span style="display:inline-block;width:8px;height:15px;background:var(--color-accent);vertical-align:-2px;margin-left:2px"></span></p>
+        <div class="hr" style="margin:2px 0"></div>
+        <div class="card-meta" style="font-feature-settings:'tnum'">
+          <span>mistralai/mistral-small-3.1:free</span><span>·</span><span>7.2s elapsed</span><span>·</span><span>$0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid var(--color-divider);padding:18px 44px;display:flex;align-items:center;gap:20px">
+    <span style="font-family:var(--font-heading);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Stage 2 · judgment</span>
+    <span class="text-muted" style="font-size:12.5px">Sealed until all four statements exist. Every judge then reads the same transcript, and none of them reads another judge.</span>
+    <span class="text-muted" style="margin-left:auto;font-size:12px;font-feature-settings:'tnum'">Judges Meridian · Zenith · Solstice — waiting</span>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c" data-screen-label="03 Judgment">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Screen 3 — Judgment: the count, and the three rulings that produced it</div>
+<div class="dv-card" style="width:1180px">
+  <div class="nav">
+    <span class="nav-brand">Tribunal</span>
+    <a href="#1a">New trial</a>
+    <a href="#1b">Courtroom</a>
+    <a href="#1c" aria-current="page">Judgment</a>
+    <span class="text-muted" style="font-size:11px;font-feature-settings:'tnum'">Run 24 · finished · 7 of 7 calls succeeded</span>
+  </div>
+
+  <div style="padding:46px 44px 34px;text-align:center;border-bottom:1px solid var(--color-divider)">
+    <p style="font-family:var(--font-heading);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--color-accent);margin:0 0 16px">The tribunal finds</p>
+    <h1 style="font-size:60px;font-weight:400;letter-spacing:-.02em;margin:0 0 14px;font-feature-settings:'tnum'">2 justified <span style="color:var(--color-neutral-400)">—</span> 1 not justified</h1>
+    <div style="display:flex;justify-content:center;gap:8px;margin:0 0 16px">
+      <div style="width:64px;border-top:3px solid var(--color-accent)"></div>
+      <div style="width:64px;border-top:3px solid var(--color-accent)"></div>
+      <div style="width:64px;border-top:3px solid var(--color-neutral-400)"></div>
+    </div>
+    <p class="text-muted" style="margin:0;font-size:12.5px">Counted from three judgment rows. The sentence above is derived at read time and stored nowhere.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;padding:0">
+    <div style="padding:28px 30px 32px;display:flex;flex-direction:column;gap:14px">
+      <div class="card-kicker">judge_1</div>
+      <h3 style="margin:0;font-size:23px;font-weight:400">Judge Meridian</h3>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span class="tag tag-outline" style="font-size:12px;padding:4px 12px">justified</span>
+        <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.78</span>
+      </div>
+      <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 22% 0 0;background:var(--color-accent)"></div></div>
+      <ol style="margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.7">
+        <li style="margin-bottom:10px">The countersignature the policy demands was electronic, and the institution's own outage made it unobtainable. A control that the institution has disabled cannot be the ground of the accused's fault.</li>
+        <li style="margin-bottom:10px">Traceability, which is the purpose of the control, was preserved: the cabinet logged the override mechanically, and the accused's handwritten entry and self-report add to that record rather than substitute for it.</li>
+        <li>The dose was ordinary and the indication was severe pain hours after surgery. Nothing in the transcript alleges clinical excess.</li>
+      </ol>
+      <div class="hr" style="margin:auto 0 0"></div>
+      <div class="card-meta" style="font-feature-settings:'tnum'"><span>deepseek/deepseek-r1:free</span><span>·</span><span>21.6s</span><span>·</span><span>$0.00</span></div>
+    </div>
+
+    <div style="background:var(--color-divider)"></div>
+
+    <div style="padding:28px 30px 32px;display:flex;flex-direction:column;gap:14px">
+      <div class="card-kicker">judge_2</div>
+      <h3 style="margin:0;font-size:23px;font-weight:400">Judge Zenith</h3>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span class="tag tag-outline" style="font-size:12px;padding:4px 12px">justified</span>
+        <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.61</span>
+      </div>
+      <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 39% 0 0;background:var(--color-accent)"></div></div>
+      <ol style="margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.7">
+        <li style="margin-bottom:10px">The paper fallback protocol raised against the accused names an authority to be reached, not a period during which the patient must wait. Its existence weakens her case but does not defeat it.</li>
+        <li style="margin-bottom:10px">Her conduct after the act — an immediate written entry and a voluntary report to the person able to discipline her — is inconsistent with an intent to evade the control.</li>
+        <li>I hold the act justified with reservation. Had the attending's presence on the premises been shown to be known to her at the time, I would have decided otherwise.</li>
+      </ol>
+      <div class="hr" style="margin:auto 0 0"></div>
+      <div class="card-meta" style="font-feature-settings:'tnum'"><span>nousresearch/hermes-3-llama-3.1-405b:free</span><span>·</span><span>18.3s</span><span>·</span><span>$0.00</span></div>
+    </div>
+
+    <div style="background:var(--color-divider)"></div>
+
+    <div style="padding:28px 30px 32px;display:flex;flex-direction:column;gap:14px">
+      <div class="card-kicker">judge_3</div>
+      <h3 style="margin:0;font-size:23px;font-weight:400">Judge Solstice</h3>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span class="tag tag-neutral" style="font-size:12px;padding:4px 12px;border:1px solid var(--color-neutral-400)">not justified</span>
+        <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum'">confidence 0.71</span>
+      </div>
+      <div style="height:2px;background:var(--color-neutral-300);position:relative"><div style="position:absolute;inset:0 29% 0 0;background:var(--color-neutral-700)"></div></div>
+      <ol style="margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.7">
+        <li style="margin-bottom:10px">A written fallback for network failure existed and was not attempted. The impossibility argued by the advocates for justification is an impossibility only if that document is ignored.</li>
+        <li style="margin-bottom:10px">Forty-one minutes, with an attending clinician on the premises, is not an interval in which no second signature could be obtained. The transcript contains no attempt to obtain one.</li>
+        <li>The urgency relied upon appears only in the accused's own later account. Where the control that would have made her account checkable was bypassed, I cannot treat that account as sufficient.</li>
+      </ol>
+      <div class="hr" style="margin:auto 0 0"></div>
+      <div class="card-meta" style="font-feature-settings:'tnum'"><span>microsoft/phi-4:free</span><span>·</span><span>16.9s</span><span>·</span><span>$0.00</span></div>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid var(--color-divider);padding:20px 44px;display:flex;align-items:center;gap:26px;font-feature-settings:'tnum'">
+    <span class="text-muted" style="font-size:12px">7 calls · 4 statements, 3 judgments</span>
+    <span class="text-muted" style="font-size:12px">wall clock 41.2s</span>
+    <span class="text-muted" style="font-size:12px">1,184 words argued</span>
+    <span class="text-muted" style="font-size:12px">cost $0.00</span>
+    <span style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn btn-secondary">Read the transcript</button>
+      <button class="btn btn-primary">Convene again on this case</button>
+    </span>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make the courtroom a single vertical timeline instead of facing columns" · "add the failed-run and empty-charge states" · "show what a 3–0 verdict looks like"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

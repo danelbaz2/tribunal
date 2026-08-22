@@ -11,13 +11,13 @@ import pytest
 
 from app.tribunal.orchestrator import run_trial
 from app.tribunal.roles import ADVOCATE_SLOTS, JUDGE_SLOTS
-from conftest import ScriptedCaller, ruling_json
+from conftest import ScriptedCaller, ruling_json, statement_text
 
 STATEMENTS = {
-    "advocate_against_1": "VEGA-STATEMENT the diversion was avoidable and unlogged.",
-    "advocate_against_2": "LYRA-STATEMENT the record cannot be checked by a second person.",
-    "advocate_for_1": "ORION-STATEMENT the authorisation channel was itself unavailable.",
-    "advocate_for_2": "DRACO-STATEMENT the annex contemplates exactly this event.",
+    "advocate_against_1": statement_text("VEGA-MARKER the diversion was avoidable and unlogged."),
+    "advocate_against_2": statement_text("LYRA-MARKER the record cannot be checked by anyone."),
+    "advocate_for_1": statement_text("ORION-MARKER the authorisation channel was unavailable."),
+    "advocate_for_2": statement_text("DRACO-MARKER the annex contemplates exactly this event."),
 }
 
 RULINGS = {
@@ -92,11 +92,23 @@ async def test_every_judge_is_sent_all_four_statements(held):
 
 
 async def test_the_judges_all_read_the_same_transcript(held):
-    """Three judges, one room. If they differ, they are not comparable."""
-    _, caller, roster = held
+    """Three judges, one room.
 
-    prompts = {caller.prompts_for(roster[slot])[0] for slot in JUDGE_SLOTS}
-    assert len(prompts) == 1
+    Their prompts are no longer identical -- each carries its own voice. What
+    must still be identical is the room they rule on: the charge file and the
+    four statements, byte for byte.
+    """
+    _, caller, roster = held
+    marker = "--- BEGIN STATEMENTS ---"
+
+    rooms = {
+        caller.prompts_for(roster[slot])[0].split(marker, 1)[1] for slot in JUDGE_SLOTS
+    }
+    assert len(rooms) == 1
+
+    # And they really are different prompts, or this test proves nothing.
+    voices = {caller.prompts_for(roster[slot])[0].split(marker, 1)[0] for slot in JUDGE_SLOTS}
+    assert len(voices) == len(JUDGE_SLOTS)
 
 
 async def test_a_judge_is_never_told_which_chair_it_sits_in(held):

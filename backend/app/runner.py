@@ -86,6 +86,7 @@ async def build_run_out(session: AsyncSession, run_id: int) -> RunOut | None:
     calls = []
     for row in rows:
         call = CallOut.model_validate(row)
+        call = call.model_copy(update=_token_counts(row.raw_response))
         if row.status == "writing" and live.get(row.slot):
             call = call.model_copy(update={"text": live[row.slot]})
         calls.append(call)
@@ -96,12 +97,30 @@ async def build_run_out(session: AsyncSession, run_id: int) -> RunOut | None:
         case_title=run.case.title if run.case else "",
         status=run.status,
         situation=run.situation,
-        seed=run.seed,
         roster=run.roster,
         started_at=run.started_at,
         finished_at=run.finished_at,
         calls=calls,
     )
+
+
+def _token_counts(raw: dict | None) -> dict[str, int | None]:
+    """Pull the token figures out of the stored response.
+
+    Derived, not stored in their own columns: they are not counted or filtered
+    on, so the raw response is where they belong (criterion 8's "and anything
+    else worth keeping").
+    """
+    usage = (raw or {}).get("usage") or {}
+    details = usage.get("completion_tokens_details") or {}
+
+    def whole(value: object) -> int | None:
+        return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+    return {
+        "tokens": whole(usage.get("completion_tokens")),
+        "thinking_tokens": whole(details.get("reasoning_tokens")),
+    }
 
 
 class _Recorder:
@@ -157,6 +176,7 @@ class _Recorder:
             row.cost = statement.cost
             row.temperature_requested = statement.temperature_requested
             row.temperature_reported = statement.temperature_reported
+            row.raw_response = statement.raw or {"text": statement.text}
             row.attempts = 1
 
         _live_text[self.run_id].pop(statement.slot, None)
@@ -177,7 +197,7 @@ class _Recorder:
             row.temperature_requested = ruling.temperature_requested
             row.temperature_reported = ruling.temperature_reported
             row.attempts = ruling.attempts
-            row.raw_response = {"answer": ruling.raw_text}
+            row.raw_response = ruling.raw or {"answer": ruling.raw_text}
 
         await self._with_row(ruling.slot, apply)
         await self._announce()
@@ -231,7 +251,9 @@ async def _hold_trial(run_id: int) -> None:
                 roster,
                 call=call,
                 target_words=settings.statement_target_words,
+                min_statement_words=settings.min_statement_words,
                 observer=recorder,
+                max_concurrent=settings.max_concurrent_calls,
             )
         status = trial.status
         finished_at = trial.finished_at

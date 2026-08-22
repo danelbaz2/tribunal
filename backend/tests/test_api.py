@@ -22,10 +22,7 @@ from app.database import create_tables, engine
 from app.main import app
 from app.models import Base
 from app.tribunal.roles import ADVOCATE_SLOTS, ALL_SLOTS, JUDGE_SLOTS
-from conftest import ScriptedCaller, ruling_json
-
-VERDICTS = ("justified", "justified", "not_justified")
-
+from conftest import BenchCaller
 
 @pytest.fixture
 async def api():
@@ -73,26 +70,9 @@ def replay(monkeypatch):
     return install
 
 
-def _caller(overrides: dict[str, object] | None) -> ScriptedCaller:
-    from app import pool as pool_module
-
-    # Every model in the pool gets an answer, whichever way the draw fell.
-    pool = pool_module.get_pool()
-    answers: dict[str, object] = {}
-    for model in pool:
-        answers[model] = "A statement of about three hundred words would go here."
-
-    # Judges answer in the required form. The draw decides which models sit as
-    # judges, so every model must be able to answer as one.
-    for index, model in enumerate(pool):
-        answers[model] = [
-            answers[model],
-            ruling_json(VERDICTS[index % 3], 0.7),
-        ]
-
-    if overrides:
-        answers.update(overrides)
-    return ScriptedCaller(answers)
+def _caller(overrides: dict[str, object] | None) -> BenchCaller:
+    """A bench that answers by role, so it works whichever models are seated."""
+    return BenchCaller(overrides)
 
 
 async def create_case(api: httpx.AsyncClient, text: str) -> dict:
@@ -214,11 +194,11 @@ async def test_the_run_carries_the_fields_the_courtroom_reads(
     replay()
     case = await create_case(api, reference_charge)
     started = (
-        await api.post("/api/runs", json={"case_id": case["caseId"], "situation": "identical"})
+        await api.post("/api/runs", json={"case_id": case["caseId"], "situation": "different"})
     ).json()
     finished = await wait_for(api, started["id"])
 
-    assert {"id", "caseId", "caseTitle", "status", "situation", "seed", "roster",
+    assert {"id", "caseId", "caseTitle", "status", "situation", "roster",
             "startedAt", "finishedAt", "calls"} <= set(finished)
 
     statement = next(c for c in finished["calls"] if c["slot"] in ADVOCATE_SLOTS)
@@ -232,7 +212,7 @@ async def test_the_run_carries_the_fields_the_courtroom_reads(
     assert len(judgment["reasons"]) >= 2
 
 
-async def test_situation_a_seats_one_model_and_b_seats_seven(
+async def test_identical_seats_one_model_and_different_seats_seven(
     api, reference_charge, replay
 ):
     """Criterion 5, end to end."""

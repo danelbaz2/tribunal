@@ -1,4 +1,4 @@
-import type { Charge, Run, Situation } from './types'
+import type { Charge, LlmCall, Run, Situation } from './types'
 import {
   REFERENCE_RUN,
   fixtureExtract,
@@ -15,6 +15,20 @@ import {
 // answering, the UI reports the failure rather than showing invented rows.
 
 const USE_FIXTURES = import.meta.env.VITE_USE_FIXTURES === 'true'
+
+/**
+ * The backend row says `writing` for a call in flight; the interface says
+ * `live`. Normalised here, once, so nothing downstream has to know both words.
+ */
+function normalise(run: Run): Run {
+  return {
+    ...run,
+    calls: run.calls.map((call) =>
+      (call.status as string) === 'writing' ? { ...call, status: 'live' as const } : call,
+    ) as LlmCall[],
+  }
+}
+
 
 export class ApiError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -46,18 +60,13 @@ export interface ExtractedCharge {
 }
 
 /**
- * Stores the charge file and returns what extraction found. A document with no
- * extractable text layer, or one that accuses nobody of anything, is rejected
- * here — loudly, at upload, not at the verdict.
+ * Stores the pasted charge text and returns what extraction found. A charge
+ * that accuses nobody of anything is rejected here — loudly, at upload, not
+ * at the verdict.
  */
-export async function submitCharge(charge: Charge, file?: File): Promise<ExtractedCharge> {
-  if (USE_FIXTURES) return fixtureExtract(charge, file)
+export async function submitCharge(charge: Charge): Promise<ExtractedCharge> {
+  if (USE_FIXTURES) return fixtureExtract(charge)
 
-  if (charge.source === 'file' && file) {
-    const body = new FormData()
-    body.append('file', file)
-    return request<ExtractedCharge>('/api/cases', { method: 'POST', body })
-  }
   return request<ExtractedCharge>('/api/cases', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -69,17 +78,19 @@ export async function submitCharge(charge: Charge, file?: File): Promise<Extract
 export async function convene(caseId: number, situation: Situation): Promise<Run> {
   if (USE_FIXTURES) return fixtureRun(situation)
 
-  return request<Run>('/api/runs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ case_id: caseId, situation }),
-  })
+  return normalise(
+    await request<Run>('/api/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: caseId, situation }),
+    }),
+  )
 }
 
 /** Refetched on reconnect — the stream is an optimisation, not the record. */
 export async function fetchRun(runId: number): Promise<Run> {
   if (USE_FIXTURES) return Promise.resolve(REFERENCE_RUN)
-  return request<Run>(`/api/runs/${runId}`)
+  return normalise(await request<Run>(`/api/runs/${runId}`))
 }
 
 /**
@@ -99,7 +110,7 @@ export function subscribeToRun(
 
   source.onmessage = (event) => {
     try {
-      onRun(JSON.parse(event.data) as Run)
+      onRun(normalise(JSON.parse(event.data) as Run))
     } catch {
       onError(new ApiError('The run stream sent something that is not a run.'))
     }

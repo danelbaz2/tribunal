@@ -23,17 +23,18 @@ export type Verdict = 'justified' | 'not_justified'
 
 export type Situation = 'identical' | 'different'
 
-export type CallStatus = 'waiting' | 'writing' | 'done' | 'failed'
+/**
+ * `live` is the design's word for a call in flight. The backend row says
+ * `writing`; the two are normalised into one at the wire (`api.ts`) so the
+ * interface speaks one vocabulary.
+ */
+export type CallStatus = 'waiting' | 'live' | 'done' | 'failed'
 
 export type RunStatus = 'running' | 'finished' | 'failed'
 
 export interface Charge {
-  source: 'text' | 'file'
   text: string
-  filename?: string
-  pages?: number
   wordCount: number
-  hasTextLayer: boolean
 }
 
 /** One `llm_calls` row. Every call is a row, including the ones that failed. */
@@ -50,7 +51,16 @@ export interface LlmCall {
   reasons?: string[]
   words: number
   durationMs: number
+  /** Recorded, never displayed: the free tier prices at zero, so a cost
+   *  readout would always say $0.00. */
   cost: number
+  /** What the model generated, and how much of it was thinking nobody reads.
+   *  This is what took cost's place on the card: it varies per model, and it
+   *  is the largest single explanation of how long a call took. */
+  tokens?: number | null
+  thinkingTokens?: number | null
+  /** 2 when a judge had to be asked twice for the required form. */
+  attempts?: number
   /** Why the call failed, when it did. Failures are data here, not noise. */
   error?: string
 }
@@ -63,8 +73,7 @@ export interface Run {
   caseTitle: string
   status: RunStatus
   situation: Situation
-  seed: string
-  /** The draw: slot → model identifier, recorded with the run. */
+  /** Slot → model identifier, recorded with the run. */
   roster: Record<Slot, string>
   startedAt: string
   /** Set when the run reaches a terminal status. The wall clock is the span

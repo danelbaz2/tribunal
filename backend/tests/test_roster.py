@@ -1,58 +1,80 @@
-"""Criteria 5 and 15 -- the draw, and putting it back together."""
+"""Criterion 5: one model in every chair, or seven distinct ones."""
 
 from __future__ import annotations
 
 import pytest
 
 from app.tribunal.roles import ALL_SLOTS
-from app.tribunal.roster import draw_roster, new_seed
-from conftest import TEST_POOL
+from app.tribunal.roster import BenchTooSmall, seat_bench
+
+# Deliberately in reverse alphabetical order, so a test that passes because
+# the code happened to sort cannot pass here.
+RANKED = (
+    "zulu/rank-one:free",
+    "yankee/rank-two:free",
+    "xray/rank-three:free",
+    "whiskey/rank-four:free",
+    "victor/rank-five:free",
+    "uniform/rank-six:free",
+    "tango/rank-seven:free",
+    "sierra/spare-eight:free",
+    "romeo/spare-nine:free",
+)
 
 
-def test_a_bench_needs_seven_models_to_draw_from():
-    """The pool itself is discovered at startup, not written down -- see
-    `test_pool.py`. What matters here is that the draw refuses a pool too
-    small to seat seven distinct chairs."""
-    assert len(set(TEST_POOL)) >= len(ALL_SLOTS)
+def test_identical_seats_one_model_seven_times():
+    bench = seat_bench(RANKED, "identical")
+
+    assert set(bench) == set(ALL_SLOTS)
+    assert set(bench.values()) == {RANKED[0]}
 
 
-def test_situation_a_seats_exactly_one_model_seven_times():
-    """Criterion 5, first half."""
-    roster = draw_roster("seed-a", TEST_POOL, "identical")
+def test_different_seats_the_first_seven_in_order():
+    bench = seat_bench(RANKED, "different")
 
-    assert set(roster) == set(ALL_SLOTS)
-    assert len(set(roster.values())) == 1
+    assert set(bench) == set(ALL_SLOTS)
+    assert len(set(bench.values())) == len(ALL_SLOTS)
+    assert [bench[slot] for slot in ALL_SLOTS] == list(RANKED[:7])
 
 
-def test_situation_b_seats_exactly_seven_distinct_models():
-    """Criterion 5, second half."""
-    roster = draw_roster("seed-b", TEST_POOL, "different")
+def test_the_spares_sit_out_until_needed():
+    bench = seat_bench(RANKED, "different")
 
-    assert set(roster) == set(ALL_SLOTS)
-    assert len(set(roster.values())) == len(ALL_SLOTS)
+    assert RANKED[7] not in bench.values()
+    assert RANKED[8] not in bench.values()
 
 
 @pytest.mark.parametrize("situation", ["identical", "different"])
-def test_the_same_seed_redraws_the_same_bench(situation):
-    """Criterion 15 -- reconstitution, byte for byte."""
-    seed = new_seed()
-
-    first = draw_roster(seed, TEST_POOL, situation)
-    second = draw_roster(seed, TEST_POOL, situation)
-
-    assert first == second
+def test_the_same_pool_seats_the_same_bench(situation):
+    assert seat_bench(RANKED, situation) == seat_bench(RANKED, situation)
 
 
-def test_the_draw_does_not_depend_on_the_order_the_pool_was_written_in():
-    """The seed reproduces the bench; a reshuffled config file must not
-    silently redraw it."""
-    seed = "stable"
-    forwards = draw_roster(seed, TEST_POOL, "different")
-    backwards = draw_roster(seed, tuple(reversed(TEST_POOL)), "different")
+def test_order_is_the_ranking_and_is_never_sorted_away():
+    bench = seat_bench(RANKED, "identical")
 
-    assert forwards == backwards
+    assert set(bench.values()) == {RANKED[0]}
+    assert min(RANKED) != RANKED[0], "the fixture must not be alphabetical or it proves nothing"
 
 
-def test_a_pool_too_small_to_seat_the_bench_is_refused():
-    with pytest.raises(ValueError, match="models are needed|are needed"):
-        draw_roster("seed", ("only/one:free", "and/another:free"), "different")
+def test_a_duplicate_entry_does_not_take_two_chairs():
+    bench = seat_bench(("a:free", "a:free", *RANKED), "different")
+
+    assert len(set(bench.values())) == len(ALL_SLOTS)
+
+
+def test_a_bench_that_cannot_be_seated_says_so():
+    with pytest.raises(BenchTooSmall, match="chairs need distinct"):
+        seat_bench(RANKED[:4], "different")
+
+
+def test_identical_needs_only_one_model():
+    """A tier down to a single model can still run `identical`. Refusing both
+    would throw away the run that is still possible."""
+    bench = seat_bench(("only/one:free",), "identical")
+
+    assert set(bench.values()) == {"only/one:free"}
+
+
+def test_an_empty_pool_seats_nothing():
+    with pytest.raises(BenchTooSmall, match="pool is empty"):
+        seat_bench((), "identical")

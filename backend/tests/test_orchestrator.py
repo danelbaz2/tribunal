@@ -7,11 +7,11 @@ import pytest
 from app.tribunal.judges import RulingFormatError
 from app.tribunal.orchestrator import run_trial
 from app.tribunal.roles import ADVOCATE_SLOTS, BY_SLOT, JUDGE_SLOTS
-from conftest import ScriptedCaller, content_of, ruling_json
+from conftest import BenchCaller, ScriptedCaller, content_of, ruling_json, statement_text
 
 
 def full_script(roster: dict[str, str], verdicts=("justified", "justified", "not_justified")):
-    answers = {roster[slot]: f"Statement from {slot}." for slot in ADVOCATE_SLOTS}
+    answers = {roster[slot]: statement_text(f"Statement from {slot}.") for slot in ADVOCATE_SLOTS}
     for slot, verdict in zip(JUDGE_SLOTS, verdicts, strict=True):
         answers[roster[slot]] = ruling_json(verdict, 0.7)
     return answers
@@ -127,8 +127,8 @@ async def test_a_judge_that_will_not_state_a_verdict_fails_the_whole_run(
 async def test_every_failure_of_a_stage_is_reported_not_only_the_first(
     reference_charge, roster_different
 ):
-    """Situation B has seven chances to botch the schema where A has one. Which
-    slots failed on which models is the finding."""
+    """A run has seven chances to botch the schema. Which slots failed on
+    which models is the finding."""
     answers = full_script(roster_different)
     answers[roster_different["advocate_against_1"]] = TimeoutError("timed out")
     answers[roster_different["advocate_for_1"]] = TimeoutError("timed out")
@@ -158,27 +158,25 @@ def answers_caller(answers: dict) -> ScriptedCaller:
 
 @pytest.mark.parametrize("situation", ["identical", "different"])
 async def test_both_situations_run_the_same_way(reference_charge, situation):
-    """The same prompt serves all seven slots, in both situations. A run in A
-    and a run in B differ in the roster and in nothing else."""
-    from app.tribunal.roster import draw_roster
+    """The same prompt serves all seven slots, whichever bench is seated. A run
+    in `identical` and a run in `different` differ in the roster and in
+    nothing else."""
+    from app.tribunal.roster import seat_bench
 
     pool = tuple(f"test/model-{n}:free" for n in range(1, 10))
-    roster = draw_roster("fixed-seed", pool, situation)
+    roster = seat_bench(pool, situation)
 
-    answers: dict[str, object] = {}
-    for slot in ADVOCATE_SLOTS:
-        answers.setdefault(roster[slot], f"A statement about the case.")
-    for slot in JUDGE_SLOTS:
-        answers[roster[slot]] = ruling_json("justified", 0.5)
-
-    caller = ScriptedCaller(answers)
+    # Answers by role, not by model: in `identical` one model sits in all
+    # seven chairs, so "what does this model answer" has no single answer.
+    caller = BenchCaller()
     trial = await run_trial(reference_charge, roster, call=caller, target_words=300)
 
     assert trial.status == "finished"
     assert len(set(roster.values())) == (1 if situation == "identical" else 7)
 
-    # Whatever the bench, the four advocate prompts are the same four prompts.
+    # The four advocate prompts are the same four prompts: one per chair,
+    # because each chair has its own voice.
     advocate_prompts = {
         prompt for model, prompt in caller.prompts if "BEGIN STATEMENTS" not in prompt
     }
-    assert len(advocate_prompts) == 2  # one per position, four slots
+    assert len(advocate_prompts) == len(ADVOCATE_SLOTS)

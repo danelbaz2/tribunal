@@ -1,30 +1,32 @@
 # LLM Tribunal — agent briefing
 
-## The five rules that override everything
+## The four rules that override everything
 
 1. **`SPECIFICATION.md` is the deliverable.** Code is generated from it. When output is wrong,
    correct the specification first, then rebuild. Never patch code to hide a specification gap.
-2. **Comparability beats completion.** All 7 calls must succeed or the run is `failed`. Never
-   store a partial trial as if it were whole.
+2. **All 7 calls must succeed or the run is `failed`.** Never store a partial trial as if it were
+   whole.
 3. **Never infer a verdict.** A judge states its verdict in the required form or the call is
    retried once and then fails the run. No regex fallback, no keyword matching, no reading prose.
 4. **Nothing reaches a judge except the charge file and the four statements.** No other judge's
    output, no model identifier. This is enforced by what the code passes, not by prompt wording.
-5. **The same prompt serves all seven slots, in both situations.** A per-model tweak makes
-   Situation A and B non-comparable. Applies to all or to none.
 
 ## What this project is
 
 A tribunal of 7 LLM calls rules on an arbitrary charge file: 4 advocates state a position in
-isolation (no rebuttals), then 3 judges rule independently. The point is not the trial — it is
-comparing **one model in all 7 slots** against **7 distinct models**, to find out whether model
-diversity changes the verdict.
+isolation (no rebuttals), then 3 judges rule independently, each reaching a binary verdict with a
+confidence and at least two reasons.
+
+There is deliberately no built-in A-vs-B comparison feature: the roster is seven distinct free
+models, one per slot, drawn from a hand-picked static list. Comparing what happens with a
+different roster (e.g. one model in all seven chairs) is done by hand, outside the app, by running
+trials and reading them side by side — not something the code computes or stores.
 
 Read `SPECIFICATION.md` for what must be true, `ARCHITECTURE.md` for why the design is shaped
 this way, `INTERVIEW.md` for decisions already taken and closed.
 
 Stack: Python + FastAPI, PostgreSQL, React + TypeScript + Tailwind, all models via OpenRouter.
-No Docker. Two secrets in `.env`: OpenRouter key, database URL.
+No Docker. Three settings in `.env`: OpenRouter key, database URL, model pool.
 
 ## Commands
 
@@ -60,17 +62,20 @@ timing and cost live. Do not call an HTTP client from anywhere else.
 **`tribunal/` holds trial logic only** — no database code, no web code, no HTTP. It must be
 readable and testable on its own, because it is where the project's core claim lives.
 
-**Store rows, derive totals.** Every call is one `llm_calls` row. Counts, headlines and
-comparisons are computed from rows at read time. Never store a count as the source of truth.
+**Store rows, derive totals.** Every call is one `llm_calls` row. Counts and headlines are computed
+from rows at read time. Never store a count as the source of truth.
 
 **Prompts are text files in `tribunal/prompts/`, not strings in Python.** They contain roles only.
 No name, crime, country, date or fact from any case ever appears in them.
 
-**A stored case is immutable.** Editing a charge file after a comparison exists silently
-invalidates that comparison. A correction is a new case.
+**A stored case is immutable.** There is no update path for `cases`. A correction is a new case.
 
 **Record what happened, including failures.** Requested temperature and reported temperature.
 Word counts. Which slot failed and on which model. Failures are data here, not noise.
+
+**`MODEL_POOL` is a hand-picked, static list.** Set in `.env`, checked only for length at startup.
+No live discovery, no catalogue call to OpenRouter. If a model leaves the free tier, the run that
+draws it fails and names the slot and model — fix the list by hand when that happens.
 
 ## What good work looks like
 
@@ -81,7 +86,7 @@ Word counts. Which slot failed and on which model. Failures are data here, not n
   JSONB when they are not.
 - Failure paths are exercised by the `fixtures/broken/` files, not left to a live model's mood.
 
-Not good work: a feature that makes the courtroom impressive but differs between situations; a
+Not good work: a feature that adds machinery for a question nobody asked the app to answer; a
 widget that always displays the same value; a test that passes because it asserts nothing.
 
 ## How to approach the work
@@ -95,7 +100,8 @@ taught, update these context files so the lesson survives, commit, branch, build
 Part 2, record the evidence. Lock only what use confirmed — not what argument confirmed.
 
 **Subtract before adding.** When output is wrong, first suspect that too much context buried the
-instruction that mattered. Add only what an observed failure proved missing.
+instruction that mattered. Add only what an observed failure proved missing. Prefer removing a
+mechanism over adding a flag to work around it.
 
 **Write corrections down as rules.** A correction given in chat is gone at the next session. If
 something must hold, it belongs in this file as a rule — the rule, not the complaint.
@@ -112,11 +118,11 @@ Stop and ask before:
   decided. Propose the change; do not apply it.
 - **Weakening a failure rule** — a fallback parser, a partial run kept as finished, a retry count
   above one. These trade the measurement for a nicer demo. Always ask.
-- **Adding a model to the pool, or spending money.** Both situations draw from the free tier. A
-  paid model changes what the comparison measures.
+- **Adding a model to `MODEL_POOL`, or spending money.** The pool draws from the free tier. A paid
+  model changes what a run costs to reproduce.
 - **Re-capturing the committed fixtures.** They are the control case; replacing them silently
   changes what every test means.
-- **Any schema change to `cases`, `runs`, `llm_calls`, `comparisons`.**
+- **Any schema change to `cases`, `runs`, `llm_calls`.**
 - **Deploying, or anything outward-facing.**
 
 Proceed without asking on: implementation inside the stated boundaries, file and function layout,
@@ -126,9 +132,9 @@ naming, tests, refactors that keep every Part 2 criterion true.
 
 Full list in `SPECIFICATION.md` Part 5. The three easiest to forget:
 
-- **Free models fail more in Situation B than in A** (7 models, 7 chances to botch the schema).
-  That biases *which runs survive to be compared*. Record every failure.
-- **Cost is always zero** on both sides. Compare duration, agreement and word count instead.
+- **A run has seven chances to botch the schema**, not one. Record every failure, by slot and
+  model — which one failed is the finding, not noise.
+- **Cost is always zero.** Compare duration and word count instead.
 - **A model may unmask itself** inside its own statement ("as an AI developed by …"). Persona
   anonymity protects the label, not against self-disclosure.
 

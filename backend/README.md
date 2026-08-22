@@ -25,7 +25,7 @@ wrong — see `fixtures/README.md`.
 | `app/tribunal/` | How a trial works. **No database, no web, no HTTP** — it can be read and tested on its own, which is where the project's claim lives. |
 | `app/tribunal/prompts/` | The instructions, as text files. Open the two of them and confirm no case is named. |
 | `app/runner.py` | The seam: runs a trial, writes the rows, streams the events. |
-| `app/models.py` | The four tables. |
+| `app/models.py` | The three tables: cases, runs, llm_calls. |
 | `fixtures/` | The control case. |
 
 ## What is enforced, and where
@@ -52,10 +52,9 @@ wrong — see `fixtures/README.md`.
 | | |
 | --- | --- |
 | `POST /api/cases` | JSON `{text}` or multipart `file`. Extracts, and refuses at upload what cannot be tried. |
-| `POST /api/runs` | `{case_id, situation}`. Draws the bench, creates seven waiting rows, returns immediately and runs unattended. |
+| `POST /api/runs` | `{case_id}`. Seats the bench, creates seven waiting rows, returns immediately and runs unattended. |
 | `GET /api/runs/{id}` | The run and its seven rows. |
 | `GET /api/runs/{id}/events` | Server-sent events. Each message carries the whole run, so a dropped one costs a frame, not consistency. |
-| `POST /api/comparisons` | Links one `identical` run to one `different` run of the same case. Both must be `finished`. |
 
 Field names are camelCase on the wire, because `frontend/src/types.ts` reads
 them that way. `tests/test_api.py` asserts the names, so a rename on either
@@ -76,19 +75,80 @@ response shapes skip with a message saying so. Everything else — the
 arithmetic, the independence assertions, every failure path — runs offline
 today against `fixtures/broken/`.
 
-**The model pool is discovered, not written down.** At startup the server asks
-OpenRouter what it is offering and keeps the models that cost nothing, carry the
-`:free` suffix, take and return text, and can hold a transcript
-(`ai/openrouter.py:select_free_models`). Seventeen qualified on 21 August 2026.
-`GET /api/health` reports the resolved pool.
+**The bench is ranked, not drawn.** `MODEL_POOL` is a hand-picked, ordered list,
+best first, set in `.env`. Seating reads off the top of it: the first 7
+distinct entries, one per slot. It is checked only for length at startup —
+not against OpenRouter — so a model that has left the free tier is discovered
+when the run that draws it fails, not before. `GET /api/health` reports the
+configured bench.
 
-Set `MODEL_POOL` to pin it instead — to reproduce an old run, or to hold the
-bench still across a comparison. A pinned pool is validated at startup and fails
-loudly if a member has gone.
+There is no random draw, so there is nothing to reconstitute: with the pool
+unchanged, the same bench is seated every time (criterion 15), and the roster
+stored on each run is the whole record of what ran.
 
-The cost of a live pool, stated plainly: two runs convened a week apart may draw
-from different candidate sets, so comparing them carries a third uncontrolled
-variable on top of the draw itself. Every run records the pool it drew from
-(`runs.pool`), which is what keeps criterion 15 true — reconstitution needs the
-seed *and* the pool, and both are on the row. Compare runs from the same
-sitting.
+`scripts/probe_pool.py --only <ids...>` gives each candidate the real work —
+one statement, one judgment in the required form — and ranks by what it
+measures. Two calls per model: most of a day on the bare 50/day tier, an
+afternoon once $10 of credit raises it to 1000/day. Run without `--only` and
+it tries to discover the free catalogue itself, which no longer exists in
+this codebase — always pass explicit ids.
+
+## Pacing, and what a 429 means
+
+`MAX_CONCURRENT_CALLS` (default **4**) caps calls in flight at once — high
+enough that every advocate, and every judge, can hold the floor together. It
+is pacing, not method: nothing about what a call is sent changes, and no
+advocate reads another whether they speak at once or in turn. A slot is
+announced live *inside* the gate, so a card shows live only once its call is
+actually out. The free tier is documented to answer 429 to a burst of exactly
+four, so this is the setting most likely to need turning back down.
+
+A 429 is not an attempt — the model never saw the prompt, so it doesn't spend
+the one retry a real failure gets. `RATE_LIMIT_MAX_WAIT_SECONDS` bounds how
+long a call waits one out before failing anyway. Two other things it can mean:
+
+- **The account is out for the day, not the model.** The free tier caps at
+  50 requests/day on a bare key, 1000/day once $10 of credit is added —
+  `Rate limit exceeded: free-models-per-day` in the body names it. Every
+  model failing at once on a key that worked an hour ago is the daily cap.
+- **A slow read, not a hung call.** `REQUEST_TIMEOUT_SECONDS` (default
+  **60**) wraps each attempt in `asyncio.wait_for`, not just `httpx.Timeout`
+  — the latter only bounds the gap between two reads, so a model that
+  dribbles output steadily can run for minutes under a "30s" timeout and
+  never trip it.
+
+## Speed, and the thinking nobody reads
+
+Measured on real runs: **65% of every output token was hidden reasoning** —
+one judgment spent 1485 of 1712 tokens thinking, for 168 visible words in
+126s, and it's also where empty bodies come from. `REASONING_EFFORT` (default
+`low`) caps it via OpenRouter's `reasoning` parameter: 447 → 6 reasoning
+tokens on one verified call, 71.6s → 44.4s. **Never `none`** — some models
+(`gpt-oss-20b`) answer `400 Reasoning is mandatory`, same for `enabled: false`
+and `max_tokens: 0`; `low`/`minimal` are what's confirmed to work.
+
+Even at `low`, the share varies by model and by call: one advocate slot on
+`dots-3-note-preview:free` spent 92% of its completion budget on reasoning
+one time and 80% the next, same model, same prompt shape.
+`MAX_RESPONSE_TOKENS` (default **4096**) is the headroom for that swing — 2048
+measured too tight and cost real calls (one cut off, one empty body) in a
+single run.
+
+Cost always reads $0.00 (free tier) and is recorded but never shown — the
+card meta line carries tokens and the thinking share instead, plus
+`asked twice` when a judge needed the format restated.
+
+## The bench of voices
+
+`tribunal/prompts/personas/` holds seven briefs, one per chair — a manner and
+a method, nothing else. Task, output contract, target length and charge file
+live in the shared template, so what can make a call fail is identical for
+all seven; a difference between two statements is voice, not instruction.
+
+They exist because, with one model seated in all seven chairs, the two
+advocates on a side got the same prompt (they differ only by position) and at
+temperature 0 returned byte-identical statements — four chairs, two
+arguments, each served to the judges twice. Personas are fixed per run, never
+a variable, styled after a school of legal reasoning, not a person. This
+reverses `INTERVIEW.md` decision 4 (star names, no connotation) — a
+deliberate trade, not an oversight.

@@ -18,7 +18,7 @@ from ..database import get_session
 from ..models import Case, LlmCall, Run
 from ..schemas import ConveneRequest, RunOut
 from ..tribunal.roles import ALL_SLOTS, BY_SLOT
-from ..tribunal.roster import draw_roster, new_seed
+from ..tribunal.roster import BenchTooSmall, seat_bench
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
@@ -39,26 +39,16 @@ async def convene(
         raise HTTPException(status_code=404, detail="No such case.")
 
     try:
-        # The pool resolved at startup, recorded on the run below: a seed alone
-        # cannot reconstitute a bench drawn from a tier that has since moved.
         models = pool.get_pool()
     except pool.PoolTooSmall as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
-    seed = new_seed()
     try:
-        roster = draw_roster(seed, models, request.situation)
-    except ValueError as error:
+        roster = seat_bench(models, request.situation)
+    except BenchTooSmall as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
-    run = Run(
-        case_id=case.id,
-        situation=request.situation,
-        status="running",
-        seed=seed,
-        roster=roster,
-        pool=list(models),
-    )
+    run = Run(case_id=case.id, status="running", situation=request.situation, roster=roster)
     session.add(run)
     await session.flush()
 

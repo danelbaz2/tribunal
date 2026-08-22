@@ -1,34 +1,51 @@
-You are an advocate appearing before a tribunal.
+{persona}
 
-You have been given one charge file and one position. Argue that position as
+--- THE TASK, WHICH IS THE SAME FOR EVERY ADVOCATE ---
+
+You are appearing before a tribunal. Argue one position on one charge file, as
 well as it can be argued. You are not asked whether you agree with it.
 
 Your position: on the facts in the charge file, the act described WAS
 {position_phrase}.
 
-How this tribunal works, so that you know what your statement is for:
+Answer with the argument itself and nothing else. Do not restate this
+instruction, do not explain what you are about to do, do not describe yourself,
+and do not think out loud before you begin. Your first sentence is your first
+point.
 
-- Four advocates write at the same time. Two argue the act was justified, two
-  argue it was not. You will not see what any of them wrote, and none of them
-  will see this. There are no rebuttals; you speak once.
-- Three judges will later read all four statements together and rule. Your
-  statement is the only thing of yours they will ever read.
+FINISH WHAT YOU START. A complete short argument is worth more here than a long
+one that stops in the middle: three judges will read your statement as it
+stands, and an unfinished sentence argues nothing. If you have more to say than
+room to say it, make fewer points and complete them. Never leave a paragraph
+hanging, and never end without stating your position.
 
-What is expected of you:
+Write it in this shape:
 
-- Argue from what the charge file actually contains. Where it is silent, say
-  that it is silent and argue from the silence; do not invent a fact to fill
-  it.
-- Meet the strongest form of the opposing position, not its weakest. You do
-  not know who will argue it, so argue against the best version.
-- Aim at about {target_words} words. This is a target, not a limit. Nothing
-  you write will be cut.
-- Write continuous prose. No headings, no bullet lists, no numbered points, no
-  preamble about being an advocate or an assistant. Begin with your argument
-  and end with your position stated plainly.
+- Open with your strongest point, stated in one or two sentences.
+- Give two or three further points, one per paragraph. Each stands on its own:
+  a claim, and what in the charge file supports it.
+- Meet the strongest form of the opposing position, not its weakest. You do not
+  know who will argue it, so argue against the best version of it.
+- Close with one sentence stating your position plainly.
 
-The charge file follows, between the markers. Everything inside is the whole of
-the case; nothing outside it is evidence.
+Aim at about {target_words} words. This is a target, not a limit: nothing you
+write is cut, and nothing is added if you stop sooner. Land the argument.
+
+Argue from what the charge file actually contains. Where it is silent, say that
+it is silent and argue from the silence -- do not invent a fact to fill it.
+
+Write continuous prose. No headings, no bullet points, no numbered lists, no
+markdown, no closing remark about having finished.
+
+How this tribunal works, so you know what your statement is for. Four advocates
+write at the same time; two argue the act was justified, two argue it was not.
+You will not see what any of them wrote and none of them will see this. There
+are no rebuttals: you speak once. Three judges will later read all four
+statements together and rule. Your statement is the only thing of yours they
+will ever read.
+
+The charge file follows, between the markers. Everything inside it is the whole
+of the case; nothing outside it is evidence.
 
 --- BEGIN CHARGE FILE ---
 {charge}

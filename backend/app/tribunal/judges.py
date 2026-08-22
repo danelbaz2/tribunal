@@ -22,12 +22,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .advocates import Statement
-from .prompts_loader import fill, judge_retry_template, judge_template
+from .prompts_loader import fill, judge_retry_template, judge_template, persona_brief
 from .roles import (
     BY_SLOT,
+    Announce,
+    Gate,
+    NullGate,
+    Report,
     JUDGE_SLOTS,
     VERDICTS,
     Caller,
@@ -59,6 +63,8 @@ class Ruling:
     cost: float
     temperature_requested: float
     temperature_reported: float | None
+    #: The complete raw response of the attempt that was accepted.
+    raw: dict[str, object] = field(default_factory=dict)
 
 
 def build_transcript(statements: list[Statement]) -> str:
@@ -79,12 +85,23 @@ def build_transcript(statements: list[Statement]) -> str:
     return "\n\n\n".join(blocks)
 
 
-def build_prompt(charge: str, statements: list[Statement]) -> str:
-    return fill(judge_template(), charge=charge, transcript=build_transcript(statements))
+def build_prompt(charge: str, statements: list[Statement], slot: str) -> str:
+    """One judge's prompt: their own voice, and the transcript every judge gets.
+
+    The persona differs per chair; the charge file and the four statements do
+    not. That is the line this design draws -- three judges may reason
+    differently, but they rule on the same room.
+    """
+    return fill(
+        judge_template(),
+        persona=persona_brief(slot),
+        charge=charge,
+        transcript=build_transcript(statements),
+    )
 
 
-def build_retry_prompt(charge: str, statements: list[Statement]) -> str:
-    return build_prompt(charge, statements).rstrip() + "\n\n" + judge_retry_template()
+def build_retry_prompt(charge: str, statements: list[Statement], slot: str) -> str:
+    return build_prompt(charge, statements, slot).rstrip() + "\n\n" + judge_retry_template()
 
 
 def parse_ruling(answer: str) -> tuple[Verdict, float, list[str]]:
@@ -137,34 +154,54 @@ async def rule(
     statements: list[Statement],
     *,
     call: Caller,
+    on_start: Announce | None = None,
+    on_done: Report | None = None,
+    gate: Gate | None = None,
 ) -> Ruling:
-    """One judge rules. Demands the fixed form twice, then fails."""
-    prompts = [build_prompt(charge, statements), build_retry_prompt(charge, statements)]
+    """One judge rules. Demands the fixed form twice, then fails.
+
+    The gate is held across both attempts, so the restatement happens inside
+    this judge's own turn rather than queueing behind the next one.
+    """
+    prompts = [
+        build_prompt(charge, statements, role.slot),
+        build_retry_prompt(charge, statements, role.slot),
+    ]
     last_error: RulingFormatError | None = None
 
-    for attempt, prompt in enumerate(prompts, start=1):
-        completion: Completion = await call(model, prompt)
-        try:
-            verdict, confidence, reasons = parse_ruling(completion.text)
-        except RulingFormatError as error:
-            last_error = error
-            continue
+    async with gate or NullGate():
+        if on_start is not None:
+            await on_start(role.slot)
 
-        return Ruling(
-            slot=role.slot,
-            persona=role.persona,
-            model=model,
-            prompt=prompt,
-            verdict=verdict,
-            confidence=confidence,
-            reasons=reasons,
-            raw_text=completion.text,
-            attempts=attempt,
-            duration_ms=completion.duration_ms,
-            cost=completion.cost,
-            temperature_requested=completion.temperature_requested,
-            temperature_reported=completion.temperature_reported,
-        )
+        for attempt, prompt in enumerate(prompts, start=1):
+            completion: Completion = await call(model, prompt)
+            try:
+                verdict, confidence, reasons = parse_ruling(completion.text)
+            except RulingFormatError as error:
+                last_error = error
+                continue
+
+            ruling = Ruling(
+                slot=role.slot,
+                persona=role.persona,
+                model=model,
+                prompt=prompt,
+                verdict=verdict,
+                confidence=confidence,
+                reasons=reasons,
+                raw_text=completion.text,
+                attempts=attempt,
+                duration_ms=completion.duration_ms,
+                cost=completion.cost,
+                temperature_requested=completion.temperature_requested,
+                temperature_reported=completion.temperature_reported,
+                raw=dict(completion.raw),
+            )
+            # Reported as it lands, so a verdict appears when its judge returns
+            # and not when the last of the three does.
+            if on_done is not None:
+                await on_done(ruling)
+            return ruling
 
     raise RulingFormatError(
         f"{role.slot} on {model} did not state a verdict in the required form twice: {last_error}"
@@ -177,6 +214,9 @@ async def rule_all(
     statements: list[Statement],
     *,
     call: Caller,
+    on_start: Announce | None = None,
+    on_done: Report | None = None,
+    gate: Gate | None = None,
 ) -> list[Ruling]:
     """The three judges, in parallel and in ignorance of one another.
 
@@ -186,7 +226,7 @@ async def rule_all(
     """
     results = await asyncio.gather(
         *(
-            rule(BY_SLOT[slot], roster[slot], charge, statements, call=call)
+            rule(BY_SLOT[slot], roster[slot], charge, statements, call=call, on_start=on_start, on_done=on_done, gate=gate)
             for slot in JUDGE_SLOTS
         ),
         return_exceptions=True,
