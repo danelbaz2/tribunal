@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://tribunal-api.onrender.com/api/:path*"
+      "destination": "https://tribunal-api-m4kl.onrender.com/api/:path*"
     }
   ]
 }
