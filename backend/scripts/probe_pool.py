@@ -237,11 +237,13 @@ async def main(only: list[str] | None) -> int:
 
     charge = (FIXTURES / "reference_case.md").read_text(encoding="utf-8")
 
+    candidates = list(only) if only else list(settings.model_pool)
+    if not candidates:
+        print("No --only ids and MODEL_POOL is empty; nothing to probe.", file=sys.stderr)
+        return 1
+
     async with OpenRouterClient(settings) as client:
-        candidates = list(only) if only else list(
-            await client.discover_free_pool(settings.min_context_length)
-        )
-        print(f"probing {len(candidates)} free models, one at a time\n")
+        print(f"probing {len(candidates)} models, one at a time\n")
 
         results: list[Result] = []
         for index, model in enumerate(candidates, 1):

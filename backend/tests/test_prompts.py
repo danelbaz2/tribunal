@@ -153,6 +153,36 @@ def test_all_three_judges_are_given_the_same_task(reference_charge):
     assert len(tasks) == 1
 
 
+def test_the_shared_templates_carry_no_default_charge(default_charge_text):
+    """Criterion 12, the half that did not move: the two shared templates
+    (statement.txt, judge.txt) name nothing from any case, the default charge
+    included. The personas do carry an archetype's name -- that is the case
+    design dossier -- but they state no fact from the charge under trial, and
+    the contract that carries it stays blank.
+    """
+    shared = {
+        "statement.txt": statement_template(),
+        "judge.txt": judge_template(),
+        "judge.txt (retry)": judge_retry_template(),
+    }
+    distinctive = {
+        word.strip(".,;:'\"()").lower()
+        for word in re.findall(r"\b[A-Z][a-zA-Z'-]{3,}\b", default_charge_text)
+    }
+    ordinary = {
+        "the", "this", "that", "there", "where", "during", "after", "before",
+        "their", "each", "every", "none", "both", "nothing", "which", "while",
+        "whether", "question", "agreed", "case", "accused", "deceased", "act",
+        "base", "story", "realm", "tribunal", "she", "her", "his",
+    }
+    distinctive -= ordinary
+
+    for name, body in shared.items():
+        lowered = body.lower()
+        present = sorted(w for w in distinctive if re.search(rf"\b{re.escape(w)}\b", lowered))
+        assert not present, f"{name} names default-charge material: {present}"
+
+
 def test_no_persona_names_a_model_or_tells_a_chair_who_else_sits(reference_charge):
     """A persona shapes how one chair reasons. It must not tell that chair who
     the others are, or a judge learns another judge exists."""

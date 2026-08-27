@@ -1,0 +1,45 @@
+# Render Blueprint. In the Render dashboard: New > Blueprint, point it at this
+# repo. It creates one web service running the FastAPI app; the database stays
+# on Supabase (DATABASE_URL below).
+#
+# Secrets (sync: false) are entered by hand in the dashboard on first deploy:
+#   OPENROUTER_API_KEY   the paid key
+#   DATABASE_URL         the Supabase session-pooler URL (port 5432, asyncpg)
+#   MODEL_POOL           the JSON array of model ids
+#
+# The free plan spins the service down after 15 min idle (~40s cold start on
+# the next request). A run holds an SSE connection the whole time it runs, so
+# it will not spin down mid-trial; only the first request after a quiet spell
+# is slow. Upgrade to Starter ($7/mo) to stay always-on.
+
+services:
+  - type: web
+    name: tribunal-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: MODEL_POOL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false          # e.g. https://tribunal.vercel.app  (only needed if the frontend calls this URL directly instead of via the Vercel rewrite)
+      - key: DAILY_BUDGET_USD
+        value: "1.0"
+      - key: REASONING_EFFORT
+        value: minimal
+      - key: REQUEST_TIMEOUT_SECONDS
+        value: "45"
+      - key: MAX_RESPONSE_TOKENS
+        value: "8192"
+      - key: MAX_ATTEMPTS
+        value: "3"

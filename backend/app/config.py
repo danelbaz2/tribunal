@@ -70,14 +70,17 @@ class Settings(BaseSettings):
     reasoning_effort: str = "minimal"
 
     #: Calls in flight at once, inside a stage. Four lets every advocate (and
-    #: every judge) hold the floor together -- but the free tier is documented
-    #: to answer 429 to a burst of exactly four, so this is the one setting
-    #: most likely to need turning back down after a real run is watched.
+    #: every judge) hold the floor together. A run once had one of four
+    #: parallel calls fail with a bare `400`, which looked like a burst cap --
+    #: but it was the same slot every time (a persona the provider's moderation
+    #: refused), not whichever call started fourth. A failure that is always
+    #: the same slot is content, never pacing. Lower this to 3 only if `400`s
+    #: appear on *varying* slots run to run.
     #:
     #: This is pacing, not method. It does not change what any call is sent.
     #: Isolation is untouched: no advocate reads another whether they write at
     #: once or in turn.
-    max_concurrent_calls: int = 4
+    max_concurrent_calls: int = 2
 
     #: What to wait when a 429 arrives without a `Retry-After` header.
     rate_limit_pause_seconds: float = 20.0
@@ -120,6 +123,22 @@ class Settings(BaseSettings):
     #: The hand-picked bench: at least seven free model identifiers, best
     #: first. Set in `.env`.
     model_pool: tuple[str, ...] = ()
+
+    #: Browser origins allowed to call the API cross-origin, comma-separated.
+    #: In the Vercel-rewrite setup the browser sees one origin and this is
+    #: never exercised; it is the fallback for a frontend that calls the
+    #: backend URL directly. The dev pair is always allowed.
+    allowed_origins: str = ""
+
+    #: A spend cap for a public deployment. When > 0, `convene` refuses to
+    #: start a run once the summed `llm_calls.cost` of the last 24 hours has
+    #: reached this many dollars. Derived from the rows at request time, never
+    #: stored -- same rule as every other total. 0 disables it (local default,
+    #: so tests and offline runs are untouched).
+    #:
+    #: A run already in flight is not interrupted, so the ceiling can be
+    #: overshot by at most one run's cost (cents). Set in `.env` for the deploy.
+    daily_budget_usd: float = 0.0
 
 
 @lru_cache

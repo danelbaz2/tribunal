@@ -105,11 +105,16 @@ async def abandon_interrupted_runs() -> None:
 
 app = FastAPI(title="LLM Tribunal", lifespan=lifespan)
 
-# The frontend proxies /api in development, so this matters only when the two
-# are served from different origins.
+# The frontend proxies /api in development and Vercel rewrites it in
+# production, so in both cases the browser sees one origin and this is never
+# exercised. It stays as the fallback for a frontend pointed straight at the
+# backend URL: set ALLOWED_ORIGINS (comma-separated) for that.
+_origins = ["http://localhost:5173", "http://127.0.0.1:5173"] + [
+    o.strip() for o in get_settings().allowed_origins.split(",") if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

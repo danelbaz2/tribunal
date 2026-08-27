@@ -74,15 +74,20 @@ export async function submitCharge(charge: Charge): Promise<ExtractedCharge> {
   })
 }
 
-/** Starts the run. There is no human in the loop after this call returns. */
-export async function convene(caseId: number, situation: Situation): Promise<Run> {
+/**
+ * Starts the run. There is no human in the loop after this call returns.
+ *
+ * `caseId` is optional: convene with none and the run is tried on the committed
+ * default charge.
+ */
+export async function convene(caseId: number | undefined, situation: Situation): Promise<Run> {
   if (USE_FIXTURES) return fixtureRun(situation)
 
   return normalise(
     await request<Run>('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ case_id: caseId, situation }),
+      body: JSON.stringify(caseId === undefined ? { situation } : { case_id: caseId, situation }),
     }),
   )
 }

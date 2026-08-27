@@ -67,16 +67,20 @@ not against the prompt template.
 10. The text sent to any advocate contains **no** output produced by any other advocate.
 11. The transcript sent to any judge contains **zero** model identifiers: for every model string
     in the pool, that string does not appear anywhere in the judge's input.
-12. The three prompt templates contain no name, crime, country, date or fact from any specific
-    case. Verifiable by reading two files.
+12. The two shared prompt templates (`statement.txt`, `judge.txt`) contain no name, crime,
+    country, date or fact from any specific case — the default charge included. The seven
+    persona briefs carry an archetype's name and voice but state no fact from the charge under
+    trial. Verifiable by reading the files.
 
 ## Reference-based — settles against a human reader
 
 13. **Verdict fidelity.** A human reads all 3 written judgments of a run and records the verdict
     each one reached. The stored verdict must match the human's reading in **20 of 20** judgments
     across the first 7 runs. Any single mismatch is a defect, not a tolerance.
-14. **Case independence.** The whole system runs on a second, entirely unrelated charge file with
-    **zero code changes** and produces a finished run.
+14. **Case independence.** The whole system runs on a charge file entirely unrelated to the
+    default and to the personas' archetype, with **zero code changes**, and produces a finished
+    run. The shared templates and the trial logic name no case; only the persona *display*
+    names are welded to the dossier, and they are never sent to a judge as fact.
 15. **The roster is a pure function of `MODEL_POOL` and `situation`.** With the pool unchanged,
     convening the same situation seats the same models in the same slots every time — no random draw, nothing to
     reconstitute.
@@ -102,15 +106,21 @@ Slots and personas are fixed for every run. Only the model in each chair varies.
 
 | Slot | Persona shown to judges | Position |
 |---|---|---|
-| `advocate_against_1` | Advocate Vega | not justified |
-| `advocate_against_2` | Advocate Lyra | not justified |
-| `advocate_for_1` | Advocate Orion | justified |
-| `advocate_for_2` | Advocate Draco | justified |
-| `judge_1` | Judge Meridian | — |
-| `judge_2` | Judge Zenith | — |
-| `judge_3` | Judge Solstice | — |
+| `advocate_against_1` | Daenerys Targaryen | not justified |
+| `advocate_against_2` | Grey Worm | not justified |
+| `advocate_for_1` | Jon Snow | justified |
+| `advocate_for_2` | Tyrion Lannister | justified |
+| `judge_1` | The Barak model | — |
+| `judge_2` | The Elon model | — |
+| `judge_3` | The Shamgar model | — |
 
-Judge personas are for display only; no judge learns another judge exists.
+The seven voices are the archetypes of the case design dossier: four
+representatives with fixed procedural sides, and three judges each stylised
+after a school of judicial reasoning (purposive proportionality; tradition and
+the limits of a court; offices and powers before moral intuition). A persona
+carries manner and method only — the brief in `prompts/personas/<slot>.txt`
+states no fact from the charge under trial. Judge personas are for display
+only; no judge learns another judge exists.
 
 ## The two output contracts
 
@@ -144,6 +154,16 @@ best first, set in `.env`. It is not checked against OpenRouter at startup — o
   seated every time.
 - Temperature is fixed at the lowest value each model supports; the value actually sent is
   recorded per call.
+
+## The default charge
+
+A run may be convened with no case of its own. When it is, it is tried on the
+committed default charge — the canonical charge sheet of the case design
+dossier (`app/default_charge.md`, *The Realm v. Jon Snow*). It is read through
+the same refusals as any upload and stored as an ordinary immutable `cases`
+row the first time a run needs it; every later default run reuses that same
+row, so those runs stay comparable and the "a stored case is immutable" rule
+is untouched. An explicit `case_id` always wins.
 
 ## Stage boundary
 

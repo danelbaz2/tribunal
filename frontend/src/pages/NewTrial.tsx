@@ -90,7 +90,9 @@ export function NewTrial() {
     setSubmitError(null)
     setConvening(true)
     try {
-      const id = caseId ?? (await submitCharge(charge)).caseId
+      // No caseId and nothing pasted: the run falls back to the default charge.
+      const id =
+        caseId ?? (wordCount > 0 ? (await submitCharge(charge)).caseId : undefined)
       await start(id, situation)
       sequencer.goTo('statements')
     } catch (cause) {
@@ -103,13 +105,9 @@ export function NewTrial() {
   function handleConvene() {
     setSubmitError(null)
 
-    if (wordCount === 0) {
-      setSubmitError('The charge file is empty. There is nothing here to try.')
-      return
-    }
-    if (!valid) {
+    if (wordCount > 0 && !valid) {
       setSubmitError(
-        `A charge of ${wordCount} words is too short to argue. Supply at least ${MIN_CHARGE_WORDS}.`,
+        `A charge of ${wordCount} words is too short to argue. Supply at least ${MIN_CHARGE_WORDS}, or clear the box to try the default charge.`,
       )
       return
     }
@@ -162,14 +160,15 @@ export function NewTrial() {
             <button
               type="button"
               className="btn btn-primary px-[22px] py-[11px] text-[15px]"
-              disabled={!valid || convening || running}
+              disabled={convening || running}
               onClick={handleConvene}
             >
               {convening ? 'Convening…' : started ? 'Convene again' : 'Convene the tribunal'}
             </button>
             <span className="text-muted max-w-[52ch] text-meta">
-              Once convened the trial runs to its end without you: four statements, then three
-              judgments, then the count.
+              {wordCount === 0
+                ? 'No charge supplied: the tribunal will try the canonical charge sheet, The Realm v. Jon Snow.'
+                : 'Once convened the trial runs to its end without you: four statements, then three judgments, then the count.'}
             </span>
           </div>
         </div>

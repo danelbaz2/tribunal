@@ -13,9 +13,9 @@ export const ALL_SLOTS: Slot[] = [...ADVOCATE_SLOTS, ...JUDGE_SLOTS]
  * in. The two sides are set opposite so a claim and its answer sit on the same
  * row, so the room fills across the aisle rather than down one column:
  *
- *   row 1   Vega (against)  ↔  Orion (for)
- *   row 2   Lyra (against)  ↔  Draco (for)
- *   then    Meridian, Zenith, Solstice
+ *   row 1   Daenerys (against)  ↔  Jon Snow (for)
+ *   row 2   Grey Worm (against) ↔  Tyrion (for)
+ *   then    Barak, Elon, Shamgar
  *
  * Everything is rendered and counted in this order, never in order of arrival.
  */
@@ -38,29 +38,31 @@ export const ADVOCATE_ROWS: { against: AdvocateSlot; for: AdvocateSlot }[] = [
 /**
  * Display names only. No judge learns another judge exists.
  *
- * Each chair is a school of legal reasoning rather than a person — the voice
- * lives in `backend/app/tribunal/prompts/personas/`, fixed across every run.
+ * The seven archetypes of the case design dossier — four representatives with
+ * fixed sides, three judges each after a school of judicial reasoning. The
+ * voice lives in `backend/app/tribunal/prompts/personas/`, fixed across every
+ * run, and carries method only.
  */
 export const PERSONA: Record<Slot, string> = {
-  advocate_against_1: 'Prosecutor Ben-Ari',
-  advocate_against_2: 'Prosecutor Eldad',
-  advocate_for_1: 'Advocate Feldman',
-  advocate_for_2: 'Advocate Ben Zur',
-  judge_1: 'Justice Barak',
-  judge_2: 'Justice Sohlberg',
-  judge_3: 'Justice Rubinstein',
+  advocate_against_1: 'Daenerys Targaryen',
+  advocate_against_2: 'Grey Worm',
+  advocate_for_1: 'Jon Snow',
+  advocate_for_2: 'Tyrion Lannister',
+  judge_1: 'The Barak model',
+  judge_2: 'The Elon model',
+  judge_3: 'The Shamgar model',
 }
 
 /** What each chair is for, shown under the name so the bench reads as a set
  *  of methods rather than as a cast. */
 export const APPROACH: Record<Slot, string> = {
-  advocate_against_1: 'no tolerance for a rule treated as a suggestion',
-  advocate_against_2: 'consequence and precedent, coldly',
-  advocate_for_1: 'the purpose a rule was written to serve',
-  advocate_for_2: 'the record, clause by clause',
+  advocate_against_1: 'command, and a killing taken in private is not justice',
+  advocate_against_2: 'the timeline, and the safer step not taken',
+  advocate_for_1: 'duty, and what was known in the moment',
+  advocate_for_2: 'motives, consequences, and every alternative',
   judge_1: 'purposive interpretation and proportionality',
-  judge_2: 'textual fidelity and judicial restraint',
-  judge_3: 'practical wisdom and balance',
+  judge_2: 'tradition, and the limits of a court',
+  judge_3: 'offices and powers before moral intuition',
 }
 
 /** The side an advocate argues, as it appears under their name. */

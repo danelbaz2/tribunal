@@ -23,3 +23,6 @@ dist/
 
 # sqlite used by the offline tests and smoke runs
 *.sqlite
+
+# source dossier — kept locally, content lives in backend/app/default_charge.md + personas
+Tribunal_running_project_info_package*.pdf

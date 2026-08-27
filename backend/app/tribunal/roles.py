@@ -43,14 +43,20 @@ class Role:
 #: 4, deliberately: with one voice per chair the two advocates on a side can no
 #: longer return the same statement, which at temperature 0 on one model is
 #: exactly what they did.
+#:
+#: The seven voices are the archetypes of the case design dossier: four
+#: representatives with fixed procedural sides, and three judges each stylised
+#: after a school of judicial reasoning. The name is an identity, not a claim
+#: about the case -- the brief in `prompts/personas/<slot>.txt` carries manner
+#: and method only, and states no fact from the charge under trial.
 ROLES: tuple[Role, ...] = (
-    Role("advocate_against_1", "statement", "Prosecutor Ben-Ari", "not_justified"),
-    Role("advocate_against_2", "statement", "Prosecutor Eldad", "not_justified"),
-    Role("advocate_for_1", "statement", "Advocate Feldman", "justified"),
-    Role("advocate_for_2", "statement", "Advocate Ben Zur", "justified"),
-    Role("judge_1", "judgment", "Justice Barak"),
-    Role("judge_2", "judgment", "Justice Sohlberg"),
-    Role("judge_3", "judgment", "Justice Rubinstein"),
+    Role("advocate_against_1", "statement", "Daenerys Targaryen", "not_justified"),
+    Role("advocate_against_2", "statement", "Grey Worm", "not_justified"),
+    Role("advocate_for_1", "statement", "Jon Snow", "justified"),
+    Role("advocate_for_2", "statement", "Tyrion Lannister", "justified"),
+    Role("judge_1", "judgment", "The Barak model"),
+    Role("judge_2", "judgment", "The Elon model"),
+    Role("judge_3", "judgment", "The Shamgar model"),
 )
 
 BY_SLOT: dict[str, Role] = {role.slot: role for role in ROLES}

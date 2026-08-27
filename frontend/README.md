@@ -1,7 +1,7 @@
 # Tribunal — frontend
 
-React + TypeScript + Tailwind. Three screens, built from
-`design_handoff_tribunal_ui/README.md` on the **Classical** design system.
+React + TypeScript + Tailwind, on the **Classical** design system. `src/index.css`
+holds the token block and is the source of truth for every visual value.
 
 ```
 npm install
@@ -23,7 +23,7 @@ a bench, press convene. Everything after that happens without the user.
 
 | Path | What it is |
 | --- | --- |
-| `src/index.css` | The Classical token block and component classes, ported from the handoff bundle. **The source of truth for every visual value.** |
+| `src/index.css` | The Classical token block and component classes. **The source of truth for every visual value.** |
 | `tailwind.config.js` | The same tokens as Tailwind theme entries — each reads the CSS variable, never a repeated literal. |
 | `src/pages/NewTrial.tsx` | The whole run page. |
 | `src/components/` | `Nav` (sticky, four stages), `ChargeUpload`, `RosterView`, `StatementsView`, `JudgePanel`, `Result`, `PulseDots`. |

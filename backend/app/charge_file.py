@@ -12,8 +12,16 @@ from __future__ import annotations
 import io
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from pypdf import PdfReader
+
+#: The charge a run falls back to when it is convened with no case of its own:
+#: the canonical charge sheet of the case design dossier. It is committed text,
+#: read through the same refusals as any upload, and stored as an ordinary
+#: immutable case the first time a run needs it.
+DEFAULT_CHARGE_PATH = Path(__file__).parent / "default_charge.md"
+DEFAULT_CHARGE_TITLE = "Case T-001: The Realm v. Jon Snow"
 
 
 class ChargeFileRejected(ValueError):
@@ -105,6 +113,11 @@ def read(data: bytes, filename: str) -> Extraction:
         has_text_layer=has_text_layer,
         title=derive_title(text),
     )
+
+
+def default_charge() -> Extraction:
+    """The committed fallback charge, read through the ordinary refusals."""
+    return read_text(DEFAULT_CHARGE_PATH.read_text(encoding="utf-8"))
 
 
 def read_text(text: str) -> Extraction:

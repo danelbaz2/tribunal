@@ -22,8 +22,9 @@ import type { Run, Situation } from '../types'
 interface RunStore {
   run: Run | null
   error: string | null
-  /** Convenes the tribunal and follows it to its end. No further input is taken. */
-  start: (caseId: number, situation: Situation) => Promise<Run>
+  /** Convenes the tribunal and follows it to its end. No further input is
+   *  taken. With no `caseId`, the run is tried on the default charge. */
+  start: (caseId: number | undefined, situation: Situation) => Promise<Run>
   /** Drops the run and its stream, back to no run at all — the failed-run
    *  escape hatch. The stored case is untouched; only the client's memory of
    *  having convened is cleared. */
@@ -58,7 +59,7 @@ export function RunProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => unsubscribe.current?.(), [])
 
   const start = useCallback(
-    async (caseId: number, situation: Situation) => {
+    async (caseId: number | undefined, situation: Situation) => {
       const started = await convene(caseId, situation)
       setRun(started)
       setError(null)

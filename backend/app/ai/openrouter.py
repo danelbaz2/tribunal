@@ -328,14 +328,31 @@ def _delta_of(chunk: dict[str, Any]) -> str:
 
 
 def _error_detail(response: httpx.Response) -> str:
-    """What the gateway actually said, when it said anything."""
+    """What the gateway actually said, when it said anything.
+
+    OpenRouter's own message is often just "Provider returned error"; the
+    upstream reason it wraps sits in `error.metadata` (`raw`, `provider_name`).
+    Pull that too, or a content refusal relayed as a 400 reads as a bare number.
+    """
     try:
         payload = response.json()
     except ValueError:
         return f"HTTP {response.status_code}"
+
     error = payload.get("error") if isinstance(payload, dict) else None
-    message = error.get("message") if isinstance(error, dict) else None
-    return f"HTTP {response.status_code}: {message}" if message else f"HTTP {response.status_code}"
+    if not isinstance(error, dict):
+        return f"HTTP {response.status_code}"
+
+    parts = [str(error["message"])] if error.get("message") else []
+    metadata = error.get("metadata")
+    if isinstance(metadata, dict):
+        if metadata.get("provider_name"):
+            parts.append(f"provider={metadata['provider_name']}")
+        raw = metadata.get("raw") or metadata.get("reasons") or metadata.get("flagged_input")
+        if raw:
+            parts.append(f"upstream: {str(raw)[:300]}")
+
+    return f"HTTP {response.status_code}: {' | '.join(parts)}" if parts else f"HTTP {response.status_code}"
 
 
 def _int_or_none(value: object) -> int | None:

@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
-// Classical design system, ported from
-// `design_handoff_tribunal_ui/_ds/classical-.../styles.css`.
+// Classical design system. The token values live in `src/index.css`; this file
+// only mirrors them as Tailwind theme entries.
 //
 // Every value below points at the CSS variable declared in `src/index.css`, so
 // the token block stays the single source of truth: retune a token there and

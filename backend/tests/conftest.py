@@ -37,6 +37,12 @@ def reference_charge() -> str:
     return (FIXTURES / "reference_case.md").read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="session")
+def default_charge_text() -> str:
+    """The committed charge a run falls back to when convened with no case."""
+    return (BACKEND / "app" / "default_charge.md").read_text(encoding="utf-8")
+
+
 def load_envelope(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 

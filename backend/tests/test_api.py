@@ -264,3 +264,58 @@ async def test_a_failed_call_fails_the_run_and_names_the_slot(
 
 async def test_an_unknown_run_is_a_404(api):
     assert (await api.get("/api/runs/4242")).status_code == 404
+
+
+async def test_a_daily_budget_stops_new_runs_once_it_is_reached(
+    api, reference_charge, replay, monkeypatch
+):
+    """DAILY_BUDGET_USD: convene 429s once the last 24h of `llm_calls.cost`
+    reaches the cap. The spend is summed from rows, never stored."""
+    from sqlalchemy import update
+
+    from app.config import get_settings
+    from app.database import SessionFactory
+    from app.models import LlmCall
+
+    monkeypatch.setenv("DAILY_BUDGET_USD", "0.05")
+    get_settings.cache_clear()
+    try:
+        replay()
+        case = await create_case(api, reference_charge)
+
+        first = (
+            await api.post(
+                "/api/runs", json={"case_id": case["caseId"], "situation": "different"}
+            )
+        ).json()
+        assert (await wait_for(api, first["id"]))["status"] == "finished"
+
+        # Push the recorded costs past the cap; the next convene must 429.
+        async with SessionFactory() as session:
+            await session.execute(update(LlmCall).values(cost=0.02))
+            await session.commit()
+
+        blocked = await api.post(
+            "/api/runs", json={"case_id": case["caseId"], "situation": "different"}
+        )
+        assert blocked.status_code == 429
+        assert "budget" in blocked.json()["detail"].lower()
+    finally:
+        monkeypatch.delenv("DAILY_BUDGET_USD", raising=False)
+        get_settings.cache_clear()
+
+
+async def test_convening_with_no_case_uses_the_default_charge(api, replay, default_charge_text):
+    """A run convened with no `case_id` falls back to the committed default
+    charge, stored once as an ordinary immutable case and reused after that."""
+    replay()
+
+    first = (await api.post("/api/runs", json={"situation": "different"})).json()
+    assert first["status"] == "running"
+    assert first["caseTitle"].startswith("Case T-001")
+    finished = await wait_for(api, first["id"])
+    assert finished["status"] == "finished"
+
+    second = (await api.post("/api/runs", json={"situation": "identical"})).json()
+    assert second["caseId"] == first["caseId"], "the default case is created once, then reused"
+    await wait_for(api, second["id"])

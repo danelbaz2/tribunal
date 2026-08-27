@@ -36,9 +36,14 @@ class ExtractedCharge(Wire):
 
 
 class ConveneRequest(BaseModel):
-    """The only two inputs the whole flow takes: which case, and which bench."""
+    """The only two inputs the whole flow takes: which case, and which bench.
 
-    case_id: int = Field(alias="case_id")
+    `case_id` is optional: a run convened without one is tried on the committed
+    default charge, stored as an ordinary immutable case the first time it is
+    needed.
+    """
+
+    case_id: int | None = Field(default=None, alias="case_id")
     situation: str
 
     model_config = ConfigDict(populate_by_name=True)

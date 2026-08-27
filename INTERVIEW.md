@@ -87,6 +87,19 @@ precisely the question in Part 1. Cost is zero on both sides.
 
 ---
 
+## Round 4 — 2026-08-27, the case design dossier
+
+**Q10 — The `Tribunal_running_project_info_package` PDF gives a canonical charge sheet and seven
+named archetypes. Adopt them, given the "no name in a prompt" rule?**
+
+**A — Adopt all seven, plus the charge as a default.** The personas become the dossier's
+archetypes (Jon Snow / Tyrion / Daenerys / Grey Worm; the Barak / Elon / Shamgar models). The
+brief files keep manner and method only and state no fact from the charge under trial; the
+shared templates stay blank of any case. The charge sheet becomes `app/default_charge.md`,
+used whenever a run is convened with no `case_id` and stored once as an immutable case.
+Criteria 12 and 14 were reworded to match. `fixtures/reference_case.md` stays as the offline
+control case and the case-independence proof.
+
 ## Decisions the agent took, subject to your approval
 
 These were not asked because the lesson supplies the answer; flagged here so nothing is silently

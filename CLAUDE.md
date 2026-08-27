@@ -65,8 +65,12 @@ readable and testable on its own, because it is where the project's core claim l
 **Store rows, derive totals.** Every call is one `llm_calls` row. Counts and headlines are computed
 from rows at read time. Never store a count as the source of truth.
 
-**Prompts are text files in `tribunal/prompts/`, not strings in Python.** They contain roles only.
-No name, crime, country, date or fact from any case ever appears in them.
+**Prompts are text files in `tribunal/prompts/`, not strings in Python.** The two shared
+templates (`statement.txt`, `judge.txt`) contain roles only — no name, crime, country, date or
+fact from any case, the default charge included. The seven persona briefs carry an archetype's
+name and voice (the case design dossier: Jon Snow, Tyrion, Daenerys, Grey Worm; the Barak, Elon
+and Shamgar models) but state no fact from the charge under trial, and no persona is ever sent
+to a judge — only the four statements are.
 
 **A stored case is immutable.** There is no update path for `cases`. A correction is a new case.
 
