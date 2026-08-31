@@ -3,9 +3,11 @@ import { JUDGE_SLOTS, PERSONA } from '../lib/slots'
 import {
   bySlot,
   formatConfidence,
+  formatCost,
   formatCount,
   formatSeconds,
   outcome,
+  totalCost,
   totalThinkingTokens,
   totalTokens,
   verdictLabel,
@@ -122,6 +124,7 @@ export function Result({
               {totalThinkingTokens(run) > 0 &&
                 `, ${formatCount(totalThinkingTokens(run))} of them thinking`}
             </span>
+            <span className="text-muted text-meta-sm">{formatCost(totalCost(run))} in model calls</span>
           </div>
 
           <div className="flex justify-center gap-3">

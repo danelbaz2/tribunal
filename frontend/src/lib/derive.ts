@@ -145,7 +145,9 @@ export function formatSeconds(ms: number): string {
 }
 
 export function formatCost(cost: number): string {
-  return `$${cost.toFixed(2)}`
+  // Runs cost cents on the paid pool, so two decimals would round most of the
+  // spread away; show three below a dime, two above it.
+  return cost < 0.1 ? `$${cost.toFixed(3)}` : `$${cost.toFixed(2)}`
 }
 
 export function formatCount(value: number): string {
