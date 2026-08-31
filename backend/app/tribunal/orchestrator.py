@@ -37,6 +37,10 @@ class Observer(Protocol):
 
     async def call_progress(self, slot: str, text: str) -> None: ...
 
+    async def call_retrying(
+        self, slot: str, attempt: int, max_attempts: int, reason: str
+    ) -> None: ...
+
     async def statement_done(self, statement: Statement) -> None: ...
 
     async def ruling_done(self, ruling: Ruling) -> None: ...
@@ -48,6 +52,10 @@ class NullObserver:
     async def call_started(self, slot: str, stage: str, model: str) -> None: ...
 
     async def call_progress(self, slot: str, text: str) -> None: ...
+
+    async def call_retrying(
+        self, slot: str, attempt: int, max_attempts: int, reason: str
+    ) -> None: ...
 
     async def statement_done(self, statement: Statement) -> None: ...
 
@@ -128,6 +136,9 @@ async def run_trial(
     async def announce(slot: str) -> None:
         await watcher.call_started(slot, BY_SLOT[slot].stage, roster[slot])
 
+    async def retrying(slot: str, attempt: int, max_attempts: int, reason: str) -> None:
+        await watcher.call_retrying(slot, attempt, max_attempts, reason)
+
     # ── stage 1 ───────────────────────────────────────────────────────────
     try:
         trial.statements = await hear_all(
@@ -139,6 +150,7 @@ async def run_trial(
             on_progress=progress,
             on_start=announce,
             on_done=watcher.statement_done,
+            on_retry=retrying,
             gate=gate,
         )
     except StageFailed as failure:
@@ -155,6 +167,7 @@ async def run_trial(
             roster, charge, trial.statements, call=call,
             on_start=announce,
             on_done=watcher.ruling_done,
+            on_retry=retrying,
             gate=gate,
         )
     except StageFailed as failure:

@@ -28,7 +28,7 @@ CLASSIFIER_ANSWER = "User Safety: unsafe\nSafety Categories: Unauthorized Advice
 
 
 def caller_answering(text: str):
-    async def call(model, prompt, on_chunk=None):
+    async def call(model, prompt, on_chunk=None, on_retry=None):
         return FakeCompletion(model=model, text=text)
 
     return call

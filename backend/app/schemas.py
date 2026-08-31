@@ -49,6 +49,19 @@ class ConveneRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class RetryState(Wire):
+    """A call in flight that has just been tried again.
+
+    Transient: held in memory for the life of the run, never a stored column,
+    same rule as the streamed partial text. Present only while `status` is
+    still `writing`.
+    """
+
+    attempt: int
+    max: int
+    reason: str
+
+
 class CallOut(Wire):
     slot: str
     stage: str
@@ -71,6 +84,8 @@ class CallOut(Wire):
     thinking_tokens: int | None = None
     #: 2 when a judge had to be asked twice for the required form.
     attempts: int = 0
+    #: Set while a call in flight is being retried; cleared when it settles.
+    retrying: RetryState | None = None
     #: Which slot failed, and why. Surfaced, never swallowed.
     error: str | None = None
 

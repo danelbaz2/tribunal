@@ -122,7 +122,9 @@ class ScriptedCaller:
     def prompts_for(self, model: str) -> list[str]:
         return [prompt for sent_model, prompt in self.prompts if sent_model == model]
 
-    async def __call__(self, model: str, prompt: str, on_chunk=None) -> FakeCompletion:
+    async def __call__(
+        self, model: str, prompt: str, on_chunk=None, on_retry=None
+    ) -> FakeCompletion:
         self.prompts.append((model, prompt))
 
         queue = self._answers.get(model)
@@ -155,9 +157,11 @@ class BenchCaller(ScriptedCaller):
     def __init__(self, overrides: dict[str, object] | None = None):
         super().__init__(overrides or {})
 
-    async def __call__(self, model: str, prompt: str, on_chunk=None) -> FakeCompletion:
+    async def __call__(
+        self, model: str, prompt: str, on_chunk=None, on_retry=None
+    ) -> FakeCompletion:
         if model in self._answers:
-            return await super().__call__(model, prompt, on_chunk=on_chunk)
+            return await super().__call__(model, prompt, on_chunk=on_chunk, on_retry=on_retry)
 
         self.prompts.append((model, prompt))
         text = ruling_json() if "BEGIN STATEMENTS" in prompt else statement_text("A statement.")

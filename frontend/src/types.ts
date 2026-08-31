@@ -61,6 +61,11 @@ export interface LlmCall {
   thinkingTokens?: number | null
   /** 2 when a judge had to be asked twice for the required form. */
   attempts?: number
+  /** Set while a call in flight is being retried — the first attempt did not
+   *  land and another is going out. Transient: the backend holds it in memory
+   *  and clears it the moment the call settles, so it is only ever seen on a
+   *  `live` card. */
+  retrying?: { attempt: number; max: number; reason: string } | null
   /** Why the call failed, when it did. Failures are data here, not noise. */
   error?: string
 }

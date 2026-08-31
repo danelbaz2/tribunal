@@ -43,6 +43,11 @@ _subscribers: dict[int, set[asyncio.Queue[RunOut | None]]] = defaultdict(set)
 #: Partial statement text, per run and slot. In memory only.
 _live_text: dict[int, dict[str, str]] = defaultdict(dict)
 
+#: A call being retried, per run and slot: {"attempt", "max", "reason"}.
+#: In memory only, same rule as the partial text -- cleared when the call
+#: settles (done or failed).
+_retry_state: dict[int, dict[str, dict[str, object]]] = defaultdict(dict)
+
 #: Background trials, kept referenced so they are not garbage-collected.
 _tasks: set[asyncio.Task[None]] = set()
 
@@ -83,12 +88,15 @@ async def build_run_out(session: AsyncSession, run_id: int) -> RunOut | None:
     ).scalars().all()
 
     live = _live_text.get(run_id, {})
+    retrying = _retry_state.get(run_id, {})
     calls = []
     for row in rows:
         call = CallOut.model_validate(row)
         call = call.model_copy(update=_token_counts(row.raw_response))
         if row.status == "writing" and live.get(row.slot):
             call = call.model_copy(update={"text": live[row.slot]})
+        if row.status == "writing" and retrying.get(row.slot):
+            call = call.model_copy(update={"retrying": retrying[row.slot]})
         calls.append(call)
 
     return RunOut(
@@ -154,11 +162,27 @@ class _Recorder:
             row.model = model
             row.stage = stage
 
+        _retry_state[self.run_id].pop(slot, None)
         await self._with_row(slot, apply)
+        await self._announce()
+
+    async def call_retrying(
+        self, slot: str, attempt: int, max_attempts: int, reason: str
+    ) -> None:
+        # In memory only -- a retry in progress is not a fact the database
+        # keeps, any more than the half-written statement is. It is cleared the
+        # moment the call settles.
+        _retry_state[self.run_id][slot] = {
+            "attempt": attempt,
+            "max": max_attempts,
+            "reason": reason,
+        }
         await self._announce()
 
     async def call_progress(self, slot: str, text: str) -> None:
         _live_text[self.run_id][slot] = text
+        # Text is arriving: whatever retry got us here has succeeded.
+        _retry_state[self.run_id].pop(slot, None)
 
         now = time.monotonic()
         if now - self._last_progress.get(slot, 0.0) < _PROGRESS_INTERVAL_SECONDS:
@@ -180,6 +204,7 @@ class _Recorder:
             row.attempts = 1
 
         _live_text[self.run_id].pop(statement.slot, None)
+        _retry_state[self.run_id].pop(statement.slot, None)
         await self._with_row(statement.slot, apply)
         await self._announce()
 
@@ -199,6 +224,7 @@ class _Recorder:
             row.attempts = ruling.attempts
             row.raw_response = ruling.raw or {"answer": ruling.raw_text}
 
+        _retry_state[self.run_id].pop(ruling.slot, None)
         await self._with_row(ruling.slot, apply)
         await self._announce()
 
@@ -212,6 +238,7 @@ class _Recorder:
                 row.attempts = settings.max_attempts
 
             _live_text[self.run_id].pop(failure.slot, None)
+            _retry_state[self.run_id].pop(failure.slot, None)
             await self._with_row(failure.slot, apply)
         await self._announce()
 
@@ -277,6 +304,7 @@ async def _hold_trial(run_id: int) -> None:
             await session.commit()
 
     _live_text.pop(run_id, None)
+    _retry_state.pop(run_id, None)
 
     async with SessionFactory() as session:
         payload = await build_run_out(session, run_id)

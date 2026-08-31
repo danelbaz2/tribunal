@@ -8,7 +8,6 @@ import { Result } from '../components/Result'
 import { submitCharge } from '../api'
 import { countWords, doneCount, failedCalls } from '../lib/derive'
 import { useRunStore } from '../lib/runStore'
-import { ADVOCATE_SLOTS } from '../lib/slots'
 import { stepFor, useAutoScrollEscape, useSequencedScroll } from '../lib/useSequencedScroll'
 import type { Charge, Run, Situation } from '../types'
 
@@ -32,28 +31,49 @@ import type { Charge, Run, Situation } from '../types'
 const MIN_CHARGE_WORDS = 25
 
 /**
- * Where the reader already is when a run fails — not at the top of the page,
- * which by then is scrolled well out of view. A run only ever fails one
- * stage: every failed slot is an advocate, or every failed slot is a judge,
- * never a mix, so the failed slots alone say which section to land next to.
+ * Pinned to the bottom of the viewport, not dropped into the page flow: when a
+ * run fails the reader is scrolled deep into the statements or the judges, and
+ * an inline banner there is as easy to miss as the top of the page. This one
+ * is in view wherever they are, and carries the two ways forward — retry the
+ * same charge, or clear everything and start again.
  */
-function FailureBanner({ run, onStartOver }: { run: Run; onStartOver: () => void }) {
+function FailureBanner({
+  run,
+  onRetry,
+  onStartOver,
+  busy,
+}: {
+  run: Run
+  onRetry: () => void
+  onStartOver: () => void
+  busy: boolean
+}) {
   return (
-    <div className="mx-auto max-w-[1320px] px-[48px] pb-[34px]">
-      <div
-        className="tb-enter flex items-center justify-between gap-4 border border-accent px-5 py-4"
-        role="alert"
-      >
-        <p className="m-0 text-meta text-accent-700">
-          The run failed —{' '}
+    <div
+      className="tb-enter fixed inset-x-0 bottom-0 z-50 border-t border-accent bg-accent-100 shadow-lg"
+      role="alert"
+    >
+      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-4 px-[48px] py-[16px]">
+        <p className="m-0 max-w-[70ch] text-meta text-accent-800">
+          <span className="font-medium">The run failed after every retry</span> —{' '}
           {failedCalls(run)
             .map((call) => `${call.slot} (${call.model})`)
             .join(', ')}
           . All seven calls must succeed or nothing is kept.
         </p>
-        <button type="button" className="btn btn-secondary shrink-0" onClick={onStartOver}>
-          Start over
-        </button>
+        <div className="flex shrink-0 gap-3">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onRetry}
+            disabled={busy}
+          >
+            {busy ? 'Convening…' : 'Try the same charge again'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onStartOver}>
+            Start over
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -70,12 +90,7 @@ export function NewTrial() {
   const started = run !== null
   const done = run ? doneCount(run) : 0
   const running = run?.status === 'running'
-  // A run fails one stage at a time: every failed slot is an advocate, or
-  // every failed slot is a judge, never a mix — so the first failed slot
-  // alone says which section the banner belongs next to.
-  const failedInAdvocates = run
-    ? failedCalls(run).every((call) => (ADVOCATE_SLOTS as readonly string[]).includes(call.slot))
-    : true
+  const failed = run?.status === 'failed'
 
   const following = useAutoScrollEscape(running)
   const sequencer = useSequencedScroll(stepFor(done, started), following)
@@ -121,7 +136,7 @@ export function NewTrial() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen${failed ? ' pb-[140px]' : ''}`}>
       <Nav started={started} done={done} />
 
       <section className="border-b border-divider px-[48px] pb-[72px] pt-[64px]">
@@ -175,12 +190,14 @@ export function NewTrial() {
       </section>
 
       {run && <StatementsView run={run} sequencer={sequencer} />}
-      {run && run.status === 'failed' && failedInAdvocates && (
-        <FailureBanner run={run} onStartOver={startOver} />
-      )}
       {run && done >= 4 && <JudgePanel run={run} sequencer={sequencer} />}
-      {run && run.status === 'failed' && !failedInAdvocates && (
-        <FailureBanner run={run} onStartOver={startOver} />
+      {run && failed && (
+        <FailureBanner
+          run={run}
+          busy={convening}
+          onRetry={() => void convene(run.caseId)}
+          onStartOver={startOver}
+        />
       )}
       {run && done >= 7 && (
         <Result

@@ -185,6 +185,28 @@ export function fixtureRun(situation: Situation): Promise<Run> {
 }
 
 /**
+ * Slots that stall on their first attempt in the replay, so fixtures mode
+ * exercises the retry banner: one advocate (a transport wobble) and one judge
+ * (the format retry). `?dev=fail` additionally fails the last judge, so the
+ * bottom failure banner and its "try again" button can be seen too.
+ */
+const RETRY_SLOTS: Partial<Record<Slot, { attempt: number; max: number; reason: string }>> = {
+  advocate_for_1: {
+    attempt: 2,
+    max: 3,
+    reason: 'the model did not answer within 30s',
+  },
+  judge_2: {
+    attempt: 2,
+    max: 2,
+    reason: 'the answer was not a verdict in the required form',
+  },
+}
+
+const devFail = () =>
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === 'fail'
+
+/**
  * Replays the arrival order: each statement writes, then finishes, in slot
  * order; stage 2 opens only once all four exist; the three judgments then
  * arrive. Timings are compressed — the point is the sequence of states, not
@@ -215,14 +237,31 @@ export function fixtureStream(onRun: (run: Run) => void): () => void {
     })
 
     const finished = new Map(FINISHED_CALLS.map((call) => [call.slot, call]))
+    const failLast = devFail()
     let clock = 0
 
     for (const slot of ALL_SLOTS) {
       const done = finished.get(slot)!
       const partial = done.text ? `${done.text.slice(0, 320)}` : undefined
+      const retry = RETRY_SLOTS[slot]
       clock += 700
-      at(clock, (run) => setCall(run, slot, { status: 'live', text: partial, durationMs: 0 }))
+      at(clock, (run) => setCall(run, slot, { status: 'live', durationMs: 0 }))
+      if (retry) {
+        clock += 900
+        at(clock, (run) => setCall(run, slot, { retrying: retry }))
+        clock += 1500
+        at(clock, (run) => setCall(run, slot, { retrying: null }))
+      }
+      at(clock + 200, (run) => setCall(run, slot, { text: partial }))
       clock += 1400
+
+      if (failLast && slot === 'judge_3') {
+        at(clock, (run) => setCall(run, slot, { status: 'failed', text: undefined,
+          error: `${done.model} did not answer within 30s.` }))
+        at(clock + 300, (run) => ({ ...run, status: 'failed',
+          finishedAt: new Date().toISOString() }))
+        return
+      }
       at(clock, (run) => setCall(run, slot, { ...done }))
     }
 

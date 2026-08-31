@@ -3,6 +3,7 @@ import type { JudgeSlot, LlmCall, Run } from '../types'
 import { APPROACH, JUDGE_SLOTS, PERSONA } from '../lib/slots'
 import { bySlot, formatConfidence, formatSeconds, formatTokens, verdictLabel } from '../lib/derive'
 import { PulseDots } from './PulseDots'
+import { RetryNotice } from './RetryNotice'
 import type { Sequencer } from '../lib/useSequencedScroll'
 
 // Stage two. Three columns parted by hairlines, each judge alone in theirs.
@@ -52,7 +53,10 @@ function JudgeColumn({
 
       {status === 'live' && (
         <div className="flex flex-col gap-[10px]">
-          <PulseDots label="weighing the statements" />
+          {call?.retrying && <RetryNotice call={call} />}
+          <PulseDots
+            label={call?.retrying ? 'asking again' : 'weighing the statements'}
+          />
           {/* No partial verdict exists to show — a judge returns one
               structured object or nothing. These stand for the wait without
               pretending to be the reasons that haven't been written yet. */}

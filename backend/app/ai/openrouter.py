@@ -7,7 +7,8 @@ cost and duration stop meaning one thing.
 Two different retries exist in this project, and confusing them weakens a rule:
 
 * the **transport retry**, here: a timeout, a 5xx or an empty body is retried
-  once, because nothing was said and asking again is the same question;
+  up to `MAX_ATTEMPTS - 1` times (2 by default), because nothing was said and
+  asking again is the same question;
 * the **format retry**, in `tribunal/judges.py`: a judge that answered but not
   in the required form is asked once more with the form restated. That is a
   second call with a different prompt, not a repeat of this one.
@@ -67,6 +68,10 @@ class ModelResponse:
 #: so the courtroom fills in front of the reader.
 ChunkHandler = Callable[[str], Awaitable[None]]
 
+#: Called when an attempt failed and another is about to go out:
+#: (attempt_about_to_start, max_attempts, reason). The slot is added higher up.
+RetryHandler = Callable[[int, int, str], Awaitable[None]]
+
 
 class OpenRouterClient:
     def __init__(self, settings: Settings | None = None, client: httpx.AsyncClient | None = None):
@@ -112,11 +117,13 @@ class OpenRouterClient:
         prompt: str,
         *,
         on_chunk: ChunkHandler | None = None,
+        on_retry: RetryHandler | None = None,
     ) -> ModelResponse:
         """Send one prompt to one model and measure what came back.
 
-        Retried once on a transport failure. A second failure raises, and the
-        caller fails the call rather than inventing a body for it.
+        Retried on a transport failure up to `MAX_ATTEMPTS` total attempts.
+        The last failure raises, and the caller fails the call rather than
+        inventing a body for it.
 
         **A 429 is not an attempt.** It is the gateway saying "not now" -- the
         model never saw the prompt and never answered it. Waiting and asking
@@ -134,6 +141,7 @@ class OpenRouterClient:
         while attempt <= self._settings.max_attempts:
             started = time.perf_counter()
             try:
+                _inject_dev_fault(self._settings, model, attempt)
                 coro = (
                     self._stream(model, prompt, started, on_chunk)
                     if on_chunk is not None
@@ -158,6 +166,12 @@ class OpenRouterClient:
                     delay = _retry_after(error.response, self._settings.rate_limit_pause_seconds)
                     if waited + delay <= self._settings.rate_limit_max_wait_seconds:
                         waited += delay
+                        if on_retry is not None:
+                            await on_retry(
+                                attempt,
+                                self._settings.max_attempts,
+                                f"rate limited by the gateway; waiting {delay:.0f}s",
+                            )
                         await asyncio.sleep(delay)
                         continue  # deliberately not `attempt += 1`
                     raise OpenRouterError(
@@ -180,6 +194,8 @@ class OpenRouterClient:
 
             attempt += 1
             if attempt <= self._settings.max_attempts:
+                if on_retry is not None:
+                    await on_retry(attempt, self._settings.max_attempts, str(last_error))
                 await asyncio.sleep(1.0)
 
         raise OpenRouterError(f"{model}: {last_error}") from last_error
@@ -288,6 +304,30 @@ class OpenRouterClient:
             ),
             raw=payload,
         )
+
+def _inject_dev_fault(settings: Settings, model: str, attempt: int) -> None:
+    """Make a call fail on purpose, so the retry and failure UI can be seen.
+
+    Off unless one of two `.env` switches is set, both defaulting to empty, so
+    the suite and any real run are untouched:
+
+    * ``DEV_FAULT_RETRY_ONCE=true`` -- every call fails its first attempt and
+      succeeds on the retry, so every card shows the "trying again" state once.
+    * ``DEV_FAULT_FAIL_MODEL=<model id>`` -- that model fails every attempt, so
+      its slot exhausts the retries and the run ends `failed`.
+
+    This lives here because this is the one module that owns the retry loop --
+    a fault injected anywhere else would not exercise it.
+    """
+    if settings.dev_fault_fail_model and model == settings.dev_fault_fail_model:
+        raise OpenRouterError(
+            f"{model}: DEV_FAULT_FAIL_MODEL is set -- injected failure (attempt {attempt})"
+        )
+    if settings.dev_fault_retry_once and attempt == 1 and settings.max_attempts > 1:
+        raise OpenRouterError(
+            f"{model}: DEV_FAULT_RETRY_ONCE is set -- injected first-attempt failure"
+        )
+
 
 def _content_of(payload: dict[str, Any]) -> str:
     choices = payload.get("choices") or []

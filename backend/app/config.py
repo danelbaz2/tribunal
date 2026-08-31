@@ -37,10 +37,15 @@ class Settings(BaseSettings):
     #: determinism is claimed that was not observed.
     temperature: float = 0.0
 
-    #: One retry, then the call fails and the run with it. Raising this trades
-    #: the measurement for a nicer demo; it is not a knob to turn quietly.
-    #: Rate limits are not counted here -- see `ai/openrouter.py:complete`.
-    max_attempts: int = 2
+    #: Total transport attempts per call (so 3 = two retries), then the call
+    #: fails and the run with it. This softens the failure signal and triples
+    #: the worst-case wait on a dead seat, so it is not a knob to turn quietly
+    #: -- set to 3 on Dan's instruction (2026-08-31) because the current paid
+    #: pool's latency swings enough that a single retry left good models
+    #: failing runs they would have cleared on a third try. Rate limits are not
+    #: counted here -- see `ai/openrouter.py:complete`. This is the transport
+    #: retry only; a judge's format retry is fixed at 2 in `tribunal/judges.py`.
+    max_attempts: int = 3
 
     #: How hard the model may think before it answers, through OpenRouter's
     #: unified `reasoning` parameter.
@@ -129,6 +134,16 @@ class Settings(BaseSettings):
     #: never exercised; it is the fallback for a frontend that calls the
     #: backend URL directly. The dev pair is always allowed.
     allowed_origins: str = ""
+
+    #: Dev-only fault injection, so the retry and failed-run UI can be seen
+    #: without waiting for a real model to misbehave. Both default off; the
+    #: suite never sets them. See `ai/openrouter.py:_inject_dev_fault`.
+    #: `dev_fault_retry_once`: every call fails its first attempt, then the
+    #: retry succeeds -- every card shows "trying again" once.
+    #: `dev_fault_fail_model`: this exact model id fails every attempt, so its
+    #: slot runs out of retries and the run ends `failed`.
+    dev_fault_retry_once: bool = False
+    dev_fault_fail_model: str = ""
 
     #: A spend cap for a public deployment. When > 0, `convene` refuses to
     #: start a run once the summed `llm_calls.cost` of the last 24 hours has

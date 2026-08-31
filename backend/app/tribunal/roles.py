@@ -98,6 +98,12 @@ Caller = Callable[..., Awaitable[Completion]]
 #: Reports partial text as it arrives, for the slot named.
 Progress = Callable[[str, str], Awaitable[None]]
 
+#: Told that a slot's call did not land and is being tried again:
+#: (slot, attempt, max_attempts, reason). Fired for a transport retry
+#: (`ai/openrouter.py`) and for a judge's one format retry (`judges.py`), so
+#: the interface can say why a card is taking longer than the others.
+SlotRetry = Callable[[str, int, int, str], Awaitable[None]]
+
 class NullGate:
     """No pacing: every call goes when it is ready."""
 

@@ -4,6 +4,7 @@ import type { AdvocateSlot, LlmCall, Run } from '../types'
 import { ADVOCATE_ROWS, AGAINST_SLOTS, APPROACH, FOR_SLOTS, PERSONA, SIDE } from '../lib/slots'
 import { bySlot, formatCount, formatSeconds, formatTokens, sideCount } from '../lib/derive'
 import { PulseDots } from './PulseDots'
+import { RetryNotice } from './RetryNotice'
 import type { Sequencer } from '../lib/useSequencedScroll'
 
 // Stage one. Against on the left, for on the right, parted by a spine that
@@ -87,7 +88,11 @@ function StatementCard({ slot, call }: { slot: AdvocateSlot; call?: LlmCall }) {
               cast: a reader should see why two advocates on one side differ. */}
           <div className="text-muted mt-[3px] text-meta-sm italic">{APPROACH[slot]}</div>
         </div>
-        {live && <span className="tag tag-outline">{PHASE[phase].tag}</span>}
+        {live && (
+          <span className="tag tag-outline">
+            {call?.retrying ? 'retrying…' : PHASE[phase].tag}
+          </span>
+        )}
         {status === 'done' && call && (
           <span className="tag tag-neutral tnum">{formatCount(call.words)} words</span>
         )}
@@ -109,7 +114,8 @@ function StatementCard({ slot, call }: { slot: AdvocateSlot; call?: LlmCall }) {
           arrives repaints the card on every chunk — on a slow connection
           that reads as stutter, not progress. The reveal happens once,
           after the call is whole, on the block below. */}
-      {live && <PulseDots label={PHASE[phase].pulse} />}
+      {live && call?.retrying && <RetryNotice call={call} />}
+      {live && !call?.retrying && <PulseDots label={PHASE[phase].pulse} />}
 
       {/* The failed state is not designed yet (handoff, "Not designed yet").
           Until it is: name the model, say what happened, keep the colour rule. */}

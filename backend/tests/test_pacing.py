@@ -25,14 +25,14 @@ class Watcher:
         self.peak = 0
         self.order: list[str] = []
 
-    async def __call__(self, model, prompt, on_chunk=None):
+    async def __call__(self, model, prompt, on_chunk=None, on_retry=None):
         self.in_flight += 1
         self.peak = max(self.peak, self.in_flight)
         self.order.append(model)
         try:
             # Yield, so anything else that could overlap would.
             await asyncio.sleep(0)
-            return await self.inner(model, prompt, on_chunk=on_chunk)
+            return await self.inner(model, prompt, on_chunk=on_chunk, on_retry=on_retry)
         finally:
             self.in_flight -= 1
 

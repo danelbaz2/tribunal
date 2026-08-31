@@ -38,6 +38,7 @@ from .roles import (
     Completion,
     Role,
     SlotFailure,
+    SlotRetry,
     StageFailed,
     Verdict,
 )
@@ -156,6 +157,7 @@ async def rule(
     call: Caller,
     on_start: Announce | None = None,
     on_done: Report | None = None,
+    on_retry: SlotRetry | None = None,
     gate: Gate | None = None,
 ) -> Ruling:
     """One judge rules. Demands the fixed form twice, then fails.
@@ -169,12 +171,25 @@ async def rule(
     ]
     last_error: RulingFormatError | None = None
 
+    async def relay_retry(attempt: int, max_attempts: int, reason: str) -> None:
+        if on_retry is not None:
+            await on_retry(role.slot, attempt, max_attempts, reason)
+
     async with gate or NullGate():
         if on_start is not None:
             await on_start(role.slot)
 
         for attempt, prompt in enumerate(prompts, start=1):
-            completion: Completion = await call(model, prompt)
+            if attempt > 1 and on_retry is not None:
+                await on_retry(
+                    role.slot,
+                    attempt,
+                    len(prompts),
+                    "the answer was not a verdict in the required form",
+                )
+            completion: Completion = await call(
+                model, prompt, on_retry=relay_retry if on_retry is not None else None
+            )
             try:
                 verdict, confidence, reasons = parse_ruling(completion.text)
             except RulingFormatError as error:
@@ -216,6 +231,7 @@ async def rule_all(
     call: Caller,
     on_start: Announce | None = None,
     on_done: Report | None = None,
+    on_retry: SlotRetry | None = None,
     gate: Gate | None = None,
 ) -> list[Ruling]:
     """The three judges, in parallel and in ignorance of one another.
@@ -226,7 +242,7 @@ async def rule_all(
     """
     results = await asyncio.gather(
         *(
-            rule(BY_SLOT[slot], roster[slot], charge, statements, call=call, on_start=on_start, on_done=on_done, gate=gate)
+            rule(BY_SLOT[slot], roster[slot], charge, statements, call=call, on_start=on_start, on_done=on_done, on_retry=on_retry, gate=gate)
             for slot in JUDGE_SLOTS
         ),
         return_exceptions=True,

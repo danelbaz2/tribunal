@@ -28,6 +28,7 @@ from .roles import (
     Report,
     Role,
     SlotFailure,
+    SlotRetry,
     StageFailed,
 )
 
@@ -94,6 +95,7 @@ async def speak(
     on_progress: Progress | None = None,
     on_start: Announce | None = None,
     on_done: Report | None = None,
+    on_retry: SlotRetry | None = None,
     gate: Gate | None = None,
 ) -> Statement:
     """One advocate states its position. Raises if the call failed."""
@@ -103,6 +105,10 @@ async def speak(
         if on_progress is not None:
             await on_progress(role.slot, text)
 
+    async def relay_retry(attempt: int, max_attempts: int, reason: str) -> None:
+        if on_retry is not None:
+            await on_retry(role.slot, attempt, max_attempts, reason)
+
     # The announcement belongs *inside* the gate. Outside it, all four
     # coroutines announce themselves and then queue -- which is what a real run
     # showed: four cards reasoning while one model worked and three waited.
@@ -110,7 +116,10 @@ async def speak(
         if on_start is not None:
             await on_start(role.slot)
         completion: Completion = await call(
-            model, prompt, on_chunk=relay if on_progress is not None else None
+            model,
+            prompt,
+            on_chunk=relay if on_progress is not None else None,
+            on_retry=relay_retry if on_retry is not None else None,
         )
 
     if completion.words < min_words:
@@ -153,6 +162,7 @@ async def hear_all(
     on_progress: Progress | None = None,
     on_start: Announce | None = None,
     on_done: Report | None = None,
+    on_retry: SlotRetry | None = None,
     gate: Gate | None = None,
 ) -> list[Statement]:
     """All four advocates, in parallel, each unaware of the others.
@@ -174,6 +184,7 @@ async def hear_all(
                 on_progress=on_progress,
                 on_start=on_start,
                 on_done=on_done,
+                on_retry=on_retry,
                 gate=gate,
             )
             for slot in ADVOCATE_SLOTS
