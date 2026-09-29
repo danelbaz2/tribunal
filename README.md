@@ -5,6 +5,8 @@ a position in isolation, then three judges rule without seeing one another. The 
 trial — it is comparing **one model in all seven slots** against **seven distinct models**, to find
 out whether model diversity changes the verdict.
 
+**Try it live:** [tribunal-sooty.vercel.app](https://tribunal-sooty.vercel.app). The API runs on Render's free plan, so the first request after a quiet spell can take about 40 seconds to wake up.
+
 `SPECIFICATION.md` states what must be true and is the deliverable; the code is generated from it.
 `ARCHITECTURE.md` explains why the design is shaped this way. `INTERVIEW.md` records the decisions
 already taken.
